@@ -1,0 +1,21 @@
+#=================================================#
+# Thrax: MinION Processing and Assembly Pipeline  #
+# https://github.com/eclarke/thrax                #
+#=================================================#
+
+from snakemake.utils import min_version, update_config, validate
+from pkg_resources import resource_filename
+
+import thrax
+
+if config == {}:
+    import sys
+    sys.exit("Error: no config file specified. Specify config file using --configfile.")
+
+validate(config, resource_filename("thrax", "data/config.schema.yaml"))
+
+min_version("5.2")
+samples = thrax.parse_samplesheet(config['samplesheet_fp'])
+
+include: resource_filename("thrax", "data/snakemake/processing.rules")
+include: resource_filename("thrax", "data/snakemake/assembling.rules")

@@ -1,0 +1,91 @@
+#=================================================#
+# Thrax/processing: MinION Run Processing Rules   #
+#=================================================#
+
+rule demux_fast5:
+    '''
+    Demultiplexes the raw fast5 files using Deepbinner (eclarke's patch).
+    '''
+    output:
+        out_dir = directory(expand(
+            config['output_dir']+'/demuxed/fast5/barcode{bc}',
+            bc=thrax.padded_barcodes(samples))),
+        flag = touch(config['output_dir']+'/demuxed/fast5/.deepbinner.completed')
+    threads: 8
+    params:
+        in_dir = config['fast5_dir'],
+        out_dir = config['output_dir']+'/demuxed/fast5',
+        model = {
+            "SQK-RBK004": '--rapid',
+            "EXP-NBD103": '--native'}[config['kit']]    
+    shell:
+        """
+        deepbinner realtime \
+        {params.model} \
+        --in_dir {params.in_dir} \
+        --out_dir {params.out_dir} \
+        --omp_num_threads {threads} \
+        --intra_op_parallelism_threads {threads} \
+        --no_batch
+        """
+
+rule basecall_demux_albacore:
+    ''' 
+    Basecalls and demultiplexes fast5 files using Albacore.
+    '''
+    output:
+        out_dir = directory(expand(
+            config['output_dir']+'/intermediate/albacore/workspace/barcode{bc}',
+            bc=thrax.padded_barcodes(samples))),
+        summary = config['output_dir']+'/intermediate/albacore/sequencing_summary.txt'
+    threads: 8
+    params:
+        fast5_dir = config['fast5_dir'],
+        out_dir = config['output_dir']+'/intermediate/albacore'
+    shell:
+        """
+        read_fast5_basecaller.py \
+        --input {params.fast5_dir} \
+        --save_path {params.out_dir} \
+        --flowcell {config[flowcell]} \
+        --kit {config[kit]} \
+        --output_format fastq \
+        --recursive \
+        --disable_filtering \
+        --reads_per_fastq_batch 0 \
+        --files_per_batch_folder 0 \
+        --worker_threads {threads}
+        """
+
+rule gather_fastqs:
+    '''
+    Moves basecalled fastq files to canonical directory.
+    '''
+    input:
+        directory(config['output_dir']+'/intermediate/albacore/workspace/barcode{bc}')
+    output:
+        config['output_dir']+'/fastqs/untrimmed/barcode{bc}.fastq.gz'
+    shell:
+        "cat {input}/*.fastq | gzip > {output}"
+
+rule trim_adapters:
+    '''
+    Trims adapters from ends of reads and discards chimeric reads with adapters in the middle.
+    '''
+    input:
+        rules.gather_fastqs.output
+    output:
+        config['output_dir']+"/fastqs/trimmed/barcode{bc}.fastq.gz"
+    threads: 8
+    conda:
+        "../envs/porechop.yaml"
+    shell:
+        "porechop -i {input} -o {output} --threads {threads} --discard_middle"
+
+rule process:
+    input:
+        reads = rules.trim_adapters.output
+
+rule process_all:
+    input:
+        expand(rules.process.input.reads, bc=thrax.padded_barcodes(samples))

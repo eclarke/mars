@@ -1,0 +1,41 @@
+$schema: "http://json-schema.org/draft-04/schema#"
+title: "Thrax configuration file"
+description: "Configuration file for the Thrax assembly pipeline"
+properties: 
+  output_dir:
+    description: "Path to output directory for Thrax"
+    type: "string"
+    format: "uri-reference"
+  samplesheet_fp:
+    description: "Path to samplesheet, in tab-delimited format"
+    type: "string"
+    format: "uri-reference"
+  fast5_dir:
+    description: "Path to directory containing fast5 files (searched recursively)"
+    type: "string"
+    format: "uri-reference"
+  flowcell:
+    description: "Nanopore flow cell used (from `read_fast5_basecaller.py -l`)"
+    type: "string"
+  kit:
+    description: "Nanopore library kit used (from `read_fast5_basecaller.py -l`)"
+    type: "string"
+  canu_max_mem:
+    description: "Memory to allocate to Canu, in megabytes"
+    type: "number"
+    exclusiveMinimum: 0
+  ref_genome_size:
+    description: "Size of reference genome, in bases"
+    type: "number"
+    exclusiveMinimum: 0
+  ref_genome_fp:
+    description: "Path to reference genome in FASTA format"
+    type: "string"
+    format: "uri-reference"
+
+required:
+  - output_dir
+  - samplesheet_fp
+    
+    
+    

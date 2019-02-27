@@ -1,0 +1,135 @@
+#=====================================================#
+# Thrax/assembly: Bacterial Genome Assembly Rules     #
+#=====================================================#
+
+rule assemble_canu:
+    input:
+        rules.process.input.reads
+    output:
+        config['output_dir'] + '/contigs/barcode{bc}/canu/assembly.fasta'
+    params:
+        contigs = config['output_dir'] + '/contigs/barcode{bc}/canu/canu.contigs.fasta',
+        out_dir = config['output_dir'] + '/contigs/barcode{bc}/canu'
+    resources:
+        mem_mb = config['canu_max_memory']
+    threads: 4
+    conda:
+        "../envs/canu.yaml"
+    shell:
+        """
+        canu -p canu -d {params.out_dir} \
+        genomeSize={config[ref_genome_size]} \
+        correctedErrorRate=0.16 \
+        useGrid=false maxMemory={resources.mem_mb}M maxThreads={threads} \
+        stopOnReadQuality=false \
+        -nanopore-raw {input} && \
+        cp {params.contigs} > {output}
+        """        
+
+rule assemble_unicycler:
+    input:
+        rules.process.input.reads
+    output:
+        config['output_dir'] + '/contigs/barcode{bc}/unicycler/assembly.fasta'
+    threads: 8
+    params:
+        out_dir = config['output_dir'] + '/contigs/barcode{bc}/unicyler'
+    conda:
+        "../envs/unicycler.yaml"
+    shell:
+        "unicycler -l {input} -o {params.out_dir} -t {threads}"
+
+rule assemble_rebaler:
+    input:
+        reads = rules.process.input.reads,
+        reference = config['ref_genome_fp'],
+    output:
+        config['output_dir'] + '/contigs/barcode{bc}/rebaler/assembly.fasta'
+    threads: 8
+    conda:
+        "../envs/rebaler.yaml"
+    shell:
+        "rebaler -t {threads} {input.reference} {input.reads} > {output}"
+
+rule assemble:
+    input: config['output_dir'] + '/contigs/barcode{bc}/{assembler}/assembly.fasta'
+
+# Polishing
+# ------------------------------------------------
+
+rule align_reads:
+    input:
+        contigs = rules.assemble.input,
+        reads = rules.process.input.reads
+    output:
+        bam = config['output_dir'] + '/contigs/barcode{bc}/{assembler}/sorted.bam',
+        tmp = temp(config['output_dir'] + '/contigs/barcode{bc}/{assembler}/reads.tmp')
+    threads: 8
+    conda:
+        "../envs/nanopolish.yaml"
+    shell:
+        """
+        minimap2 -ax map-ont -t {threads} {input.contigs} {input.reads} |\
+        samtools sort -o {output.bam} -T {output.tmp} -
+        samtools index {output.bam}
+        """
+
+rule nanopolish_index:
+    '''
+    Builds the Nanopolish index based on the consensus fastqs, the binned fast5s, and the 
+    Albacore sequencing summary file.
+    '''
+    input:
+        fast5 = rules.basecall_demux_albacore.input.fast5,
+        fastq = rules.process.input.reads,
+        summary = rules.basecall_demux_albacore.output.summary
+    output:
+        config['output_dir']+'/demuxed/fastq/barcode{bc}/trimmed.fastq.gz.index.readdb'
+    conda:
+        "../envs/nanopolish.yaml"
+    shell:
+        "nanopolish index -d {input.fast5} -s {input.summary} {input.fastq}"
+
+
+rule nanopolish_variants:
+    input:
+        contigs = rules.assemble.input,
+        reads = rules.align_reads.input.reads,
+        bam = rules.align_reads.output.bam,
+        index = rules.nanopolish_index.output
+    output:
+        directory(config['output_dir'] + '/contigs/barcode{bc}/{assembler}/nanopolish.workspace')
+    conda:
+        "../envs/nanopolish.yaml"
+    threads: 8
+    shell:
+        """
+        python $CONDA_PREFIX/bin/nanopolish_makerange.py {input.contigs} | \
+         parallel --results {output} -P {threads} \
+          nanopolish variants --consensus -o {output}/polished.{{1}}.vcf \
+          -w {{1}} -r {input.reads} -b {input.bam} -g {input.contigs} \
+          -t {threads} --min-candidate-frequency 0.1 \
+          --methylation-aware=dcm,dam
+        """
+
+rule nanopolish_vcf2fasta:
+    input:
+        contigs = rules.assemble.input,
+        variants_dir = config['output_dir'] + '/contigs/barcode{bc}/{assembler}/nanopolish.workspace'
+    output:
+        config['output_dir'] + '/contigs/barcode{bc}/{assembler}/polished.assembly.fasta'
+    shell:
+        "nanopolish vcf2fasta -g {input.contigs} {input.variants_dir}/polished.*.vcf > {output}"
+        
+rule polish:
+    input: rules.nanopolish_vcf2fasta.output
+
+rule canu_assemble_all:
+    input: expand(rules.polish.input, assembler='canu', bc=thrax.padded_barcodes(samples))
+
+rule unicycler_assemble_all:
+    input: expand(rules.polish.input, assembler='unicycler', bc=thrax.padded_barcodes(samples))
+
+rule rebaler_assemble_all:
+    input: expand(rules.polish.input, assembler='rebaler', bc=thrax.padded_barcodes(samples))
+
