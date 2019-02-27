@@ -4,7 +4,7 @@ Snakemake-based pipeline for quality control and assembly (both _de novo_ and re
 
 ## Installation
 
-```
+```bash
 git clone https://github.com/eclarke/thrax
 cd thrax
 pip install .
@@ -12,7 +12,7 @@ pip install .
 
 ## Usage
 
-```
+```bash
 thrax init my_project > config.yaml
 nano config.yaml  # fill in relevant values
 thrax run --configfile config.yaml
