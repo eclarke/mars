@@ -14,5 +14,6 @@ pip install .
 
 ```
 thrax init my_project > config.yaml
+nano config.yaml  # fill in relevant values
 thrax run --configfile config.yaml
 ```
