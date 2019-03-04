@@ -1,19 +1,19 @@
-# Thrax: MinION run processing and assembly
+# MARS: MinION Assembly and Reporting System
 
-Snakemake-based pipeline for quality control and assembly (both _de novo_ and reference-based) from a MinION run.
+Snakemake-based pipeline for quality control reporting and assembly (both _de novo_ and reference-based) from a MinION run.
 
 ## Installation
 
 ```bash
-git clone https://github.com/eclarke/thrax
-cd thrax
+git clone https://github.com/eclarke/mars
+cd mars
 pip install .
 ```
 
 ## Usage
 
 ```bash
-thrax init my_project > config.yaml
+mars init my_project > config.yaml
 nano config.yaml  # fill in relevant values
-thrax run --configfile config.yaml
+mars run --configfile config.yaml
 ```
