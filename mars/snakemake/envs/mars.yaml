@@ -1,0 +1,6 @@
+name: canu
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - canu=1.7.1

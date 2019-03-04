@@ -20,6 +20,7 @@ properties:
   kit:
     description: "Nanopore library kit used (from `read_fast5_basecaller.py -l`)"
     type: "string"
+    default: "SQK-RBK004"
   canu_max_mem:
     description: "Memory to allocate to Canu, in megabytes"
     type: "number"

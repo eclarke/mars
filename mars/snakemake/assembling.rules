@@ -2,6 +2,9 @@
 # MARS/assembly: Bacterial Genome Assembly Rules      #
 #=====================================================#
 
+from mars import padded_barcodes
+from package_resources import resource_filename
+
 rule assemble_canu:
     input:
         rules.process.input.reads
@@ -11,10 +14,10 @@ rule assemble_canu:
         contigs = config['output_dir'] + '/contigs/barcode{bc}/canu/canu.contigs.fasta',
         out_dir = config['output_dir'] + '/contigs/barcode{bc}/canu'
     resources:
-        mem_mb = config['canu_max_memory']
+        mem_mb = config['canu_max_mem']
     threads: 4
     conda:
-        "../envs/canu.yaml"
+        resource_filename("mars", "snakemake/envs/assembling.yaml")
     shell:
         """
         canu -p canu -d {params.out_dir} \
@@ -35,7 +38,7 @@ rule assemble_unicycler:
     params:
         out_dir = config['output_dir'] + '/contigs/barcode{bc}/unicyler'
     conda:
-        "../envs/unicycler.yaml"
+        resource_filename("mars", "snakemake/envs/assembling.yaml")
     shell:
         "unicycler -l {input} -o {params.out_dir} -t {threads}"
 
@@ -47,7 +50,7 @@ rule assemble_rebaler:
         config['output_dir'] + '/contigs/barcode{bc}/rebaler/assembly.fasta'
     threads: 8
     conda:
-        "../envs/rebaler.yaml"
+        resource_filename("mars", "snakemake/envs/assembling.yaml")
     shell:
         "rebaler -t {threads} {input.reference} {input.reads} > {output}"
 
@@ -66,7 +69,7 @@ rule align_reads:
         tmp = temp(config['output_dir'] + '/contigs/barcode{bc}/{assembler}/reads.tmp')
     threads: 8
     conda:
-        "../envs/nanopolish.yaml"
+        resource_filename("mars", "snakemake/envs/assembling.yaml")
     shell:
         """
         minimap2 -ax map-ont -t {threads} {input.contigs} {input.reads} |\
@@ -80,15 +83,16 @@ rule nanopolish_index:
     Albacore sequencing summary file.
     '''
     input:
-        fast5 = rules.basecall_demux_albacore.input.fast5,
         fastq = rules.process.input.reads,
         summary = rules.basecall_demux_albacore.output.summary
     output:
         config['output_dir']+'/demuxed/fastq/barcode{bc}/trimmed.fastq.gz.index.readdb'
+    params:
+        fast5 = config['fast5_dir']
     conda:
-        "../envs/nanopolish.yaml"
+        resource_filename("mars", "snakemake/envs/assembling.yaml")
     shell:
-        "nanopolish index -d {input.fast5} -s {input.summary} {input.fastq}"
+        "nanopolish index -d {params.fast5} -s {input.summary} {input.fastq}"
 
 
 rule nanopolish_variants:
@@ -100,7 +104,7 @@ rule nanopolish_variants:
     output:
         directory(config['output_dir'] + '/contigs/barcode{bc}/{assembler}/nanopolish.workspace')
     conda:
-        "../envs/nanopolish.yaml"
+        resource_filename("mars", "snakemake/envs/assembling.yaml")
     threads: 8
     shell:
         """
@@ -118,18 +122,21 @@ rule nanopolish_vcf2fasta:
         variants_dir = config['output_dir'] + '/contigs/barcode{bc}/{assembler}/nanopolish.workspace'
     output:
         config['output_dir'] + '/contigs/barcode{bc}/{assembler}/polished.assembly.fasta'
+    conda:
+        resource_filename("mars", "snakemake/envs/assembling.yaml")
     shell:
         "nanopolish vcf2fasta -g {input.contigs} {input.variants_dir}/polished.*.vcf > {output}"
+
         
 rule polish:
     input: rules.nanopolish_vcf2fasta.output
 
 rule canu_assemble_all:
-    input: expand(rules.polish.input, assembler='canu', bc=thrax.padded_barcodes(samples))
+    input: expand(rules.polish.input, assembler='canu', bc=padded_barcodes(samples))
 
 rule unicycler_assemble_all:
-    input: expand(rules.polish.input, assembler='unicycler', bc=thrax.padded_barcodes(samples))
+    input: expand(rules.polish.input, assembler='unicycler', bc=padded_barcodes(samples))
 
 rule rebaler_assemble_all:
-    input: expand(rules.polish.input, assembler='rebaler', bc=thrax.padded_barcodes(samples))
+    input: expand(rules.polish.input, assembler='rebaler', bc=padded_barcodes(samples))
 

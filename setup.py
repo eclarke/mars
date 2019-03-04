@@ -9,7 +9,9 @@ setup(
     include_package_data=True,
     package_data={"mars": [
         "mars/data/config.schema.yaml",
-        "mars/data/snakemake/*.rules"]},
+        "mars/snakemake/*.rules",
+        "mars/snakemake/envs/*.yaml"
+    ]},
     entry_points={'console_scripts': [
         'mars = mars.command:main',
     ]}

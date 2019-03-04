@@ -1,0 +1,12 @@
+name: assembling
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - nanopolish=0.10.2
+  - minimap2=2.13
+  - samtools=1.9
+  - parallel=20180922
+  - unicycler=0.4.7
+  - rebaler=0.1.1
+  - canu=1.7.1

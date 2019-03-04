@@ -6,7 +6,7 @@
 from snakemake.utils import min_version, update_config, validate
 from pkg_resources import resource_filename
 
-import thrax
+from mars import parse_samplesheet
 
 if config == {}:
     import sys
@@ -15,7 +15,7 @@ if config == {}:
 validate(config, resource_filename("mars", "data/config.schema.yaml"))
 
 min_version("5.2")
-samples = thrax.parse_samplesheet(config['samplesheet_fp'])
+samples = parse_samplesheet(config['samplesheet_fp'])
 
-include: resource_filename("mars", "data/snakemake/processing.rules")
-include: resource_filename("mars", "data/snakemake/assembling.rules")
+include: resource_filename("mars", "snakemake/processing.rules")
+include: resource_filename("mars", "snakemake/assembling.rules")

@@ -2,6 +2,8 @@
 # MARS/processing: MinION Run Processing Rules    #
 #=================================================#
 
+from mars import padded_barcodes
+
 rule demux_fast5:
     '''
     Demultiplexes the raw fast5 files using Deepbinner (eclarke's patch).
@@ -9,7 +11,7 @@ rule demux_fast5:
     output:
         out_dir = directory(expand(
             config['output_dir']+'/demuxed/fast5/barcode{bc}',
-            bc=thrax.padded_barcodes(samples))),
+            bc=padded_barcodes(samples))),
         flag = touch(config['output_dir']+'/demuxed/fast5/.deepbinner.completed')
     threads: 8
     params:
@@ -36,7 +38,7 @@ rule basecall_demux_albacore:
     output:
         out_dir = directory(expand(
             config['output_dir']+'/intermediate/albacore/workspace/barcode{bc}',
-            bc=thrax.padded_barcodes(samples))),
+            bc=padded_barcodes(samples))),
         summary = config['output_dir']+'/intermediate/albacore/sequencing_summary.txt'
     threads: 8
     params:
@@ -88,4 +90,4 @@ rule process:
 
 rule process_all:
     input:
-        expand(rules.process.input.reads, bc=thrax.padded_barcodes(samples))
+        expand(rules.process.input.reads, bc=padded_barcodes(samples))

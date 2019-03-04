@@ -42,7 +42,7 @@ def Run(argv):
 
     # The remaining args passed to Snakemake
     args, remaining = parser.parse_known_args(argv)
-    snakefile = pkg_resources.resource_filename("mars", "data/snakemake/Snakefile")
+    snakefile = pkg_resources.resource_filename("mars", "snakemake/Snakefile")
         
     snakemake_args = ['snakemake', '--use-conda', '--snakefile', snakefile] + remaining
     print("Running: "+" ".join(snakemake_args))
