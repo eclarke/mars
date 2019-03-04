@@ -3,3 +3,5 @@
 *.pyc
 *#*#
 commit.txt
+.eggs
+*.egg-info
