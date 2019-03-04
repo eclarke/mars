@@ -1,6 +1,6 @@
 #=================================================#
-# Thrax: MinION Processing and Assembly Pipeline  #
-# https://github.com/eclarke/thrax                #
+# MARS: MinION Assembly and Reporting System      #
+# https://github.com/eclarke/mars                 #
 #=================================================#
 
 from snakemake.utils import min_version, update_config, validate
@@ -12,10 +12,10 @@ if config == {}:
     import sys
     sys.exit("Error: no config file specified. Specify config file using --configfile.")
 
-validate(config, resource_filename("thrax", "data/config.schema.yaml"))
+validate(config, resource_filename("mars", "data/config.schema.yaml"))
 
 min_version("5.2")
 samples = thrax.parse_samplesheet(config['samplesheet_fp'])
 
-include: resource_filename("thrax", "data/snakemake/processing.rules")
-include: resource_filename("thrax", "data/snakemake/assembling.rules")
+include: resource_filename("mars", "data/snakemake/processing.rules")
+include: resource_filename("mars", "data/snakemake/assembling.rules")

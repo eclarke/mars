@@ -5,7 +5,6 @@ import yaml
 
 import pandas as pd
 
-
 def padded_barcodes(samples):
     return [b.zfill(2) for b in samples.barcode]
 
@@ -14,8 +13,8 @@ def parse_samplesheet(sample_fp):
 
 def create_empty_config(project_name):
     schema = yaml.load(
-        resource_stream("thrax", "data/config.schema.yaml").read().decode())
-    out = format("# Thrax configuration file for project '{}'\n\n".format(project_name))
+        resource_stream("mars", "data/config.schema.yaml").read().decode())
+    out = format("# MARS configuration file for project '{}'\n\n".format(project_name))
     required = schema['required']
     for key, value in schema['properties'].items():
         is_required = 'required' if key in required else 'optional'

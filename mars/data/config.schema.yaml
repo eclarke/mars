@@ -1,9 +1,9 @@
 $schema: "http://json-schema.org/draft-04/schema#"
-title: "Thrax configuration file"
-description: "Configuration file for the Thrax assembly pipeline"
+title: "MARS configuration file"
+description: "Configuration file for the MARS assembly pipeline"
 properties: 
   output_dir:
-    description: "Path to output directory for Thrax"
+    description: "Path to output directory for MARS"
     type: "string"
     format: "uri-reference"
   samplesheet_fp:

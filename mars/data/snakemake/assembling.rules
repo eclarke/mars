@@ -1,5 +1,5 @@
 #=====================================================#
-# Thrax/assembly: Bacterial Genome Assembly Rules     #
+# MARS/assembly: Bacterial Genome Assembly Rules      #
 #=====================================================#
 
 rule assemble_canu:

@@ -1,15 +1,15 @@
 from distutils.core import setup
 
 setup(
-    name="thrax",
-    use_scm_version = True,
+    name="mars",
     setup_requires=['setuptools_scm'],
-    packages=["thrax"],
+    packages=["mars"],
+    use_scm_version = {"root": ".", "relative_to": __file__},
     include_package_data=True,
-    package_data={"thrax": [
-        "thrax/data/config.schema.yaml",
-        "thrax/data/snakemake/*.rules"]},
+    package_data={"mars": [
+        "mars/data/config.schema.yaml",
+        "mars/data/snakemake/*.rules"]},
     entry_points={'console_scripts': [
-        'thrax = thrax.command:main',
+        'mars = mars.command:main',
     ]}
 )

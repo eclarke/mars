@@ -1,5 +1,5 @@
 #=================================================#
-# Thrax/processing: MinION Run Processing Rules   #
+# MARS/processing: MinION Run Processing Rules    #
 #=================================================#
 
 rule demux_fast5:
