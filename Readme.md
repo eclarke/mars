@@ -13,7 +13,6 @@ pip install .
 ## Usage
 
 ```bash
-mars init my_project > config.yaml
-nano config.yaml  # fill in relevant values
-mars run --configfile config.yaml
+mars init --output_dir mars_output --samplesheet_fp samples.tsv > config.yaml
+mars run config.yaml
 ```
