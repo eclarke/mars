@@ -1,0 +1,20 @@
+$schema: "http://json-schema.org/draft-04/schema#"
+description: "An entry in the sample sheet"
+properties:
+  barcode:
+    description: "Sequencing kit barcode number, 1-12"
+    type: number
+    minimum: 1
+    maximum: 12
+  sample_label:
+    description: "Sample label, optionally denoting run and barcode number"
+    type: string
+    pattern: "^[A-Za-z0-9_\\-\\.]*$"
+  sample_id:
+    description: "Canonical sample id from LIMS system"
+    type: string
+  description:
+    description: "Free-text description of the sample"
+    type: string
+required:
+  - barcode

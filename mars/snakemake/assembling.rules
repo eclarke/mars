@@ -1,9 +1,9 @@
 #=====================================================#
 # MARS/assembly: Bacterial Genome Assembly Rules      #
 #=====================================================#
+from pkg_resources import resource_filename
 
 from mars import padded_barcodes
-from package_resources import resource_filename
 
 rule assemble_canu:
     input:

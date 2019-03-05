@@ -14,5 +14,8 @@ setup(
     ]},
     entry_points={'console_scripts': [
         'mars = mars.command:main',
-    ]}
+    ]},
+    install_requires=[
+        'snakemake>5.1,<6'
+    ]
 )

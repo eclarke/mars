@@ -17,6 +17,7 @@ properties:
   flowcell:
     description: "Nanopore flow cell used (from `read_fast5_basecaller.py -l`)"
     type: "string"
+    default: "FLO-MIN106"
   kit:
     description: "Nanopore library kit used (from `read_fast5_basecaller.py -l`)"
     type: "string"

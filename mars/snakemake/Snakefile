@@ -3,19 +3,19 @@
 # https://github.com/eclarke/mars                 #
 #=================================================#
 
-from snakemake.utils import min_version, update_config, validate
+import sys
 from pkg_resources import resource_filename
 
-from mars import parse_samplesheet
-
-if config == {}:
-    import sys
-    sys.exit("Error: no config file specified. Specify config file using --configfile.")
-
-validate(config, resource_filename("mars", "data/config.schema.yaml"))
+from snakemake.utils import min_version, update_config, validate
+from snakemake.exceptions import WorkflowError
+import mars
 
 min_version("5.2")
-samples = parse_samplesheet(config['samplesheet_fp'])
+
+samples = mars.parse_samples(config['samplesheet_fp'])
+
+rule usage:
+    message: "Hello there!"
 
 include: resource_filename("mars", "snakemake/processing.rules")
 include: resource_filename("mars", "snakemake/assembling.rules")
