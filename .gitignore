@@ -5,3 +5,5 @@
 commit.txt
 .eggs
 *.egg-info
+.snakemake
+*_test*
