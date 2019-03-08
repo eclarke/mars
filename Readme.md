@@ -2,6 +2,8 @@
 
 Snakemake-based pipeline for quality control reporting and assembly (both _de novo_ and reference-based) from a MinION run.
 
+_Warning: very much in active development._
+
 ## Installation
 
 ```bash
