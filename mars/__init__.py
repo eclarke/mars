@@ -15,10 +15,14 @@ def padded_barcodes(samples):
 def parse_metadata(samplesheet_fp):
     metadata = {}
     with open(samplesheet_fp) as samplesheet:
-        for line in samplesheet:
-            if line.startswith("#"):
-                key, value = line.strip("# ").split('\t')
-                metadata[key] = value.strip()
+        for i, line in enumerate(samplesheet):
+            try:
+                if line.startswith("#"):
+                    key, value = line.strip("# ").split('\t')
+                    metadata[key] = value.strip()
+            except ValueError as e:
+                raise ValueError(
+                    "Could not parse metadata from line {}: '{}'".format(i+1, line.strip())) from e
     return metadata
 
 def parse_samples(samplesheet_fp):
@@ -105,8 +109,11 @@ def create_empty_config(output_dir, samplesheet_fp):
         if key == 'samplesheet_fp':
             default = samplesheet_fp
         if default is None:
-            default = 'foo #fixme' if _type == "string" else "1 #fixme"
-        default = default if default is not None else 'null'
+            default = ''
+        #default = default if default is not None else 'null'
         out += "# {} [{}, {}] \n".format(_desc, _type, is_required)
-        out += "{}: {}\n\n".format(key, default)
+        if key in required:
+            out += "{}: {}\n\n".format(key, default)
+        else:
+            out += "# {}: {}\n\n".format(key, default)
     return(out)

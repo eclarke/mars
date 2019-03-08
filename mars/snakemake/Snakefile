@@ -6,16 +6,12 @@
 import sys
 from pkg_resources import resource_filename
 
-from snakemake.utils import min_version, update_config, validate
-from snakemake.exceptions import WorkflowError
+import snakemake.utils
 import mars
 
-min_version("5.2")
+snakemake.utils.min_version("5.2")
 
 samples = mars.parse_samples(config['samplesheet_fp'])
-
-rule usage:
-    message: "Hello there!"
 
 include: resource_filename("mars", "snakemake/processing.rules")
 include: resource_filename("mars", "snakemake/assembling.rules")

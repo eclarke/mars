@@ -14,7 +14,7 @@ rule assemble_canu:
         contigs = config['output_dir'] + '/contigs/barcode{bc}/canu/canu.contigs.fasta',
         out_dir = config['output_dir'] + '/contigs/barcode{bc}/canu'
     resources:
-        mem_mb = config['canu_max_mem']
+        mem_mb = config.get('canu_max_mem', 0)
     threads: 4
     conda:
         resource_filename("mars", "snakemake/envs/assembling.yaml")
@@ -44,11 +44,12 @@ rule assemble_unicycler:
 
 rule assemble_rebaler:
     input:
-        reads = rules.process.input.reads,
-        reference = config['ref_genome_fp'],
+        reads = rules.process.input.reads
     output:
         config['output_dir'] + '/contigs/barcode{bc}/rebaler/assembly.fasta'
     threads: 8
+    params:
+        reference = config.get('ref_genome_fp', '<MISSING>')
     conda:
         resource_filename("mars", "snakemake/envs/assembling.yaml")
     shell:
@@ -88,7 +89,7 @@ rule nanopolish_index:
     output:
         config['output_dir']+'/demuxed/fastq/barcode{bc}/trimmed.fastq.gz.index.readdb'
     params:
-        fast5 = config['fast5_dir']
+        fast5 = config.get('fast5_dir')
     conda:
         resource_filename("mars", "snakemake/envs/assembling.yaml")
     shell:

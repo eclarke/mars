@@ -1,40 +1,49 @@
 $schema: "http://json-schema.org/draft-04/schema#"
-title: "MARS configuration file"
-description: "Configuration file for the MARS assembly pipeline"
+description: "Configuration file for MARS"
 properties: 
   output_dir:
     description: "Path to output directory for MARS"
-    type: "string"
-    format: "uri-reference"
+    type: string
   samplesheet_fp:
     description: "Path to samplesheet, in tab-delimited format"
-    type: "string"
-    format: "uri-reference"
+    type: string
   fast5_dir:
     description: "Path to directory containing fast5 files (searched recursively)"
-    type: "string"
-    format: "uri-reference"
+    type: string
+  basecaller:
+    description: "ONT basecaller to use"
+    type: string
+    enum:
+      - guppy
+      - albacore
+    default: albacore
   flowcell:
     description: "Nanopore flow cell used (from `read_fast5_basecaller.py -l`)"
-    type: "string"
+    type: string
     default: "FLO-MIN106"
   kit:
     description: "Nanopore library kit used (from `read_fast5_basecaller.py -l`)"
-    type: "string"
+    type: string
     default: "SQK-RBK004"
+  guppy_threads:
+    description: "Number of threads to allocate to guppy_[basecaller/barcoder]"
+    type: number
+    minimum: 1
+  albacore_threads:
+    description: "Number of threads to allocate to albacore"
+    type: number
+    minimum: 1
   canu_max_mem:
     description: "Memory to allocate to Canu, in megabytes"
-    type: "number"
-    exclusiveMinimum: 0
+    type: number
+    minimum: 1
   ref_genome_size:
     description: "Size of reference genome, in bases"
-    type: "number"
-    exclusiveMinimum: 0
+    type: number
+    minimum: 1
   ref_genome_fp:
     description: "Path to reference genome in FASTA format"
-    type: "string"
-    format: "uri-reference"
-
+    type: string
 required:
   - output_dir
   - samplesheet_fp

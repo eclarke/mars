@@ -1,34 +1,47 @@
-#=================================================#
-# MARS/processing: MinION Run Processing Rules    #
-#=================================================#
+#====================================================#
+# MARS|processing: MARS Processing/Reporting Module  #
+#====================================================#
 
 from mars import padded_barcodes
 
-rule demux_fast5:
-    '''
-    Demultiplexes the raw fast5 files using Deepbinner (eclarke's patch).
-    '''
+rule basecall_guppy:
     output:
-        out_dir = directory(expand(
-            config['output_dir']+'/demuxed/fast5/barcode{bc}',
-            bc=padded_barcodes(samples))),
-        flag = touch(config['output_dir']+'/demuxed/fast5/.deepbinner.completed')
-    threads: 8
+        out_dir = directory(config['output_dir']+'/intermediate/guppy/'),
+        summary = config['output_dir']+'/intermediate/guppy/sequencing_summary.txt'
+    threads:
+        config.get('guppy_threads', 8)
     params:
-        in_dir = config['fast5_dir'],
-        out_dir = config['output_dir']+'/demuxed/fast5',
-        model = {
-            "SQK-RBK004": '--rapid',
-            "EXP-NBD103": '--native'}[config['kit']]    
+        fast5_dir = config.get('fast5_dir'),
+        out_dir = config['output_dir']+'/intermediate/guppy'
     shell:
         """
-        deepbinner realtime \
-        {params.model} \
-        --in_dir {params.in_dir} \
-        --out_dir {params.out_dir} \
-        --omp_num_threads {threads} \
-        --intra_op_parallelism_threads {threads} \
-        --no_batch
+        guppy_basecaller \
+        --input_path {params.fast5_dir} \
+        --save_path {params.out_dir} \
+        --flowcell {config[flowcell]} \
+        --kit {config[kit]} \
+        --recursive \
+        --num_callers {threads}
+        """
+
+rule demux_guppy:
+    input:
+        fastq_dir = rules.basecall_guppy.output.out_dir
+    output:
+        summary = rules.basecall_guppy.output.out_dir + '/barcoding_summary.txt'
+    threads:
+        config.get('guppy_threads', 8)
+    params:
+        config_opt = (
+            '--config ' + config['guppy_barcoder_cfg_fp']
+            if config.get('guppy_barcoder_cfg_fp') else '')
+    shell:
+        """
+        guppy_barcoder \
+        --input_path {input.fastq_dir} \
+        --save_path {input.fastq_dir} \
+        --worker_threads {threads} \
+        {params.config_opt}
         """
 
 rule basecall_demux_albacore:
@@ -40,9 +53,10 @@ rule basecall_demux_albacore:
             config['output_dir']+'/intermediate/albacore/workspace/barcode{bc}',
             bc=padded_barcodes(samples))),
         summary = config['output_dir']+'/intermediate/albacore/sequencing_summary.txt'
-    threads: 8
+    threads:
+        config.get('albacore_threads', 8)
     params:
-        fast5_dir = config['fast5_dir'],
+        fast5_dir = config.get('fast5_dir'),
         out_dir = config['output_dir']+'/intermediate/albacore'
     shell:
         """
@@ -59,9 +73,9 @@ rule basecall_demux_albacore:
         --worker_threads {threads}
         """
 
-rule gather_fastqs:
+rule gather_albacore_fastqs:
     '''
-    Moves basecalled fastq files to canonical directory.
+    Moves Albacore fastq files to canonical directory.
     '''
     input:
         directory(config['output_dir']+'/intermediate/albacore/workspace/barcode{bc}')
@@ -73,9 +87,10 @@ rule gather_fastqs:
 rule trim_adapters:
     '''
     Trims adapters from ends of reads and discards chimeric reads with adapters in the middle.
+    Unnecessary when using Guppy.
     '''
     input:
-        rules.gather_fastqs.output
+        rules.gather_albacore_fastqs.output
     output:
         config['output_dir']+"/fastqs/trimmed/barcode{bc}.fastq.gz"
     threads: 8
