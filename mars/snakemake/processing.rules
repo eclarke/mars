@@ -2,7 +2,7 @@
 # MARS|processing: MARS Processing/Reporting Module  #
 #====================================================#
 
-from mars import padded_barcodes
+from mars import padded_barcodes, required_config_keys
 
 localrules: process, process_all
 
@@ -18,6 +18,8 @@ rule basecall_guppy:
     params:
         fast5_dir = config.get('fast5_dir'),
         out_dir = proc_working_dir + 'guppy/workspace'
+    message:
+        required_config_keys('fast5_dir')
     shell:
         """
         guppy_basecaller \
@@ -64,7 +66,6 @@ rule gather_guppy_fastqs:
     shell:
         "cat {input}/*.fastq | gzip > {output}"
 
-        
 rule basecall_demux_albacore:
     '''Basecalls and demultiplexes fast5 files using Albacore.'''
     output:
@@ -77,6 +78,8 @@ rule basecall_demux_albacore:
     params:
         fast5_dir = config.get('fast5_dir'),
         out_dir = proc_working_dir + 'albacore'
+    message:
+        required_config_keys('fast5_dir')
     shell:
         """
         read_fast5_basecaller.py \
@@ -133,5 +136,5 @@ rule process:
 rule process_all:
     input:
         expand(rules.process.output, sample=list(samples.sample_label)),
-        proc_report_dir + config['basecaller'] + '/sequencing_summary.txt'        
+        proc_report_dir + config['basecaller'] + '/sequencing_summary.txt'
 

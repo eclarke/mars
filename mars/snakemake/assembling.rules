@@ -3,7 +3,7 @@
 #=====================================================#
 from pkg_resources import resource_filename
 
-from mars import padded_barcodes
+from mars import padded_barcodes, required_config_keys
 
 asm_working_dir = config['output_dir'] + '/assembling_temp/'
 asm_output_dir = config['output_dir'] + '/assemblies/'
@@ -25,7 +25,7 @@ rule assemble_canu:
     conda:
         resource_filename("mars", "snakemake/envs/assembling.yaml")
     message:
-        "Note: this rule requires 'ref_genome_size' and 'canu_max_mem' to be specified in your config file."
+        required_config_keys('ref_genome_size', 'canu_max_mem')
     shell:
         """
         canu -p canu -d {params.out_dir} \
@@ -66,7 +66,7 @@ rule assemble_rebaler:
     conda:
         resource_filename("mars", "snakemake/envs/assembling.yaml")
     message:
-        "Note: this rule requires 'ref_genome_fp' to be specified in your config file."
+        required_config_keys('ref_genome_fp')
     shell:
         "rebaler -t {threads} {params.reference} {input.reads} > {output}"
 
@@ -108,14 +108,13 @@ rule nanopolish_index:
     output:
         proc_output_dir + '{sample}.fastq.gz.index.readdb'
     params:
-        fast5 = config.get('fast5_dir')
+        fast5 = config.get('fast5_dir', 'MISSING')
     conda:
         resource_filename("mars", "snakemake/envs/assembling.yaml")
     message:
-        "Note: This rule requires 'fast5_dir' to be specified in your config file."
+        required_config_keys('fast5_dir')
     shell:
         "nanopolish index -d {params.fast5} -s {input.summary} {input.fastq}"
-
 
 rule nanopolish_variants:
     input:

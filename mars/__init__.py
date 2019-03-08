@@ -33,6 +33,12 @@ def parse_samples(samplesheet_fp):
         dtype={'sample_id':'str', 'sample_label':'str', 'description':'str'},
         sep='\t')
 
+def required_config_keys(*keys):
+    return (
+        "Note: this task requires these config options: [{}]"
+        "\n\tBe sure they are defined and uncommented in your config file."
+        ).format(", ".join(keys))
+
 class ConfigPathWarning(UserWarning):
     pass
 
