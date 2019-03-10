@@ -35,9 +35,11 @@ To begin, MARS needs a sample sheet in tab-delimited format with two columns: `b
 MARS will yell at you if you violate either of these rules.
 Other columns are currently ignored and can be used for whatever you want.
 
-> If a sample was split among multiple barcodes, i.e. for technical replicates, you can choose to give those barcodes the same sample label.
-> MARS will concatenate the reads from all barcodes belonging to the same sample label during assembly.
+**Technical replicates:**
+If a sample was split among multiple barcodes, you can choose to give those barcodes the same sample label.
+MARS will pool the reads from all barcodes belonging to the same sample label during assembly steps.
 
+**Run metadata:**
 Additional run info can be encoded in the header in lines starting with '#' using the format `# key[tab]value`.
 (The key-value pairs are tab-separated so you can enter them in adjacent cells in Excel, etc and export as tab-separated list.)
 These will be automatically parsed as key:value pairs and added to the configuration file.
@@ -83,14 +85,15 @@ Edit the config file, uncomment that option by removing the `#` and specify a va
 Other options have reasonable defaults specified, like the number of threads given to any program.
 To override the defaults, uncomment the corresponding `[program]_threads: ` option and specify a number.
 
-> *Config Validation:* Config options that end in `_dir` or `_fp` must be paths to valid directories or files, respectively.
-> MARS will resolve any relative paths against the directory it's executed from, and stop if any paths besides `output_dir` do not exist.
-> In addition, some config options' values must be numbers (as noted in the config file).
-> MARS will complain if they're invalid, saving you the headache of debugging some random Snakemake error down the line.
+**Config Validation:**
+Config options that end in `_dir` or `_fp` must be paths to valid directories or files, respectively.
+MARS will resolve any relative paths against the directory it's executed from, and stop if any paths besides `output_dir` do not exist.
+In addition, some config options' values must be numbers (as noted in the config file).
+MARS will complain if they're invalid, saving you the headache of debugging some random Snakemake error down the line.
 
 ### Running
 
-Finally, running MARS is comparatively simple. Just type:
+Running MARS is straightforward. Just type:
 
 ```bash
 mars run my_project.yaml [task name] [any Snakemake options]
@@ -98,32 +101,22 @@ mars run my_project.yaml [task name] [any Snakemake options]
 
 The tasks currently available are:
 
-- `process_all`: Basecalls, demultiplexes, and trims adapters from a set of .fast5 files using Guppy or Albacore.
-- `canu_assemble_all`: Performs _de novo_ assembly of all samples using Canu.
-- `rebaler_assemble_all`: Performs reference-based assembly of all samples using Rebaler.
-- `unicycler_assemble_all`: Performs _de novo_ assembly of all samples using Unicycler.
-- `{assembler}_polish: Polishes any of the above assemblies using Nanopolish.
+- `process_all`: Basecalls, demultiplexes, and trims adapters from a set of .fast5 files using the specified basecaller.
+- `assemble_all`: Assembles each sample using the specified assembler.
+- `polish_all`: Polishes each sample assembly using Nanopolish.
 
-For instance, a typical user may start by processing their fast5 files.
-MARS can do this with either Albacore or Guppy.
-Specify which to use in your config file under `basecaller`, along with the path to your fast5 files, then run:
+Currently the supported basecallers are:
 
-```bash
-mars run project.yaml process_all
-```
+- `guppy`
+- `albacore`
 
-Upon completion, you may then wish to assemble against a reference genome.
-Edit your config file to provide a path to your reference genome in `ref_genome_fp` and then run:
+Supported assemblers include:
 
-```bash
-mars run project.yaml rebaler_assemble_all
-```
+- `canu`
+- `unicycler`
+- `rebaler`
 
-or
-
-```bash
-mars run project.yaml rebaler_polish
-```
+Specify the desired basecaller and/or assembler in the config file.
 
 #### Snakemake options
 

@@ -71,8 +71,16 @@ rule assemble_rebaler:
         "rebaler -t {threads} {params.reference} {input.reads} > {output}"
 
 rule assemble:
+    input: asm_output_dir + '{sample}/{assembler}/assembly.fasta'
+
+rule assemble_all:
+    message:
+        required_config_keys('assembler')
     input:
-        asm_output_dir + '{sample}/{assembler}/assembly.fasta'
+        expand(
+            rules.assemble.input,
+            assembler=config.get('assembler', ''),
+            sample=list(samples.sample_label))
 
 
 # Polishing
@@ -149,16 +157,14 @@ rule nanopolish_vcf2fasta:
     shell:
         "nanopolish vcf2fasta -g {input.contigs} {input.variants_dir}/polished.*.vcf > {output}"
 
-        
+    
 rule polish:
-    input: rules.nanopolish_vcf2fasta.output
+    input:rules.nanopolish_vcf2fasta.output
 
-rule canu_assemble_all:
-    input: expand(rules.polish.input, assembler='canu', sample=list(samples.sample_label))
-
-rule unicycler_assemble_all:
-    input: expand(rules.polish.input, assembler='unicycler', sample=list(samples.sample_label))
-
-rule rebaler_assemble_all:
-    input: expand(rules.polish.input, assembler='rebaler', sample=list(samples.sample_label))
+rule polish_all:
+    input:
+        expand(
+            rules.polish.input,
+            assembler=config.get('assembler', ''),
+            sample=list(samples.sample_label))
 

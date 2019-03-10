@@ -26,15 +26,39 @@ properties:
     type: string
     default: "SQK-RBK004"
   guppy_threads:
-    description: "Number of threads to allocate to guppy_[basecaller/barcoder]"
+    description: "Threads to allocate to Guppy"
     type: number
     minimum: 1
   albacore_threads:
-    description: "Number of threads to allocate to albacore"
+    description: "Threads to allocate to Albacore"
     type: number
     minimum: 1
+  assembler:
+    description: "Assembler to use"
+    type: string
+    enum:
+      - canu
+      - unicycler
+      - rebaler
+    default: rebaler
   canu_max_mem:
     description: "Memory to allocate to Canu, in megabytes"
+    type: number
+    minimum: 1
+  canu_threads:
+    description: "Threads to provide to Canu"
+    type: number
+    minimum: 1
+  unicycler_threads:
+    description: "Threads to provide to Unicycler"
+    type: number
+    minimum: 1
+  rebaler_threads:
+    description: "Threads to provide to Rebaler"
+    type: number
+    minimum: 1
+  minimap2_threads:
+    description: "Threads to provide to minimap2"
     type: number
     minimum: 1
   ref_genome_size:

@@ -9,8 +9,28 @@ localrules: process, process_all
 proc_working_dir = config['output_dir'] + '/processing_temp/'
 proc_output_dir = config['output_dir'] + '/fastqs/'
 proc_report_dir = config['output_dir'] + '/reports/processing/'
+proc_key_dir = proc_working_dir + '.config/'
+
+rule _proc_check_config_keys:
+    output:
+        temp(proc_working_dir + '.config/{key}')
+    params:
+        keydir = proc_working_dir + '.config/'
+    run:
+        [touch(params.keydir + k) for k in config]
+        
+rule _proc_req_keys_present:
+    message:
+        required_config_keys('basecaller', 'fast5_dir')
+    input:
+        expand(proc_working_dir + '.config/{key}', key=['basecaller', 'fast5_dir'])
+    output:
+        temp(proc_working_dir + '.config/_req_keys_present')
+
 
 rule basecall_guppy:
+    input:
+        proc_key_dir + 'fast5_dir'
     output:
         summary = proc_report_dir + 'guppy/sequencing_summary.txt'
     threads:
@@ -132,9 +152,10 @@ rule process:
         proc_output_dir + '{sample}.fastq.gz'
     shell:
         """cat {input} > {output}"""
-
+        
 rule process_all:
     input:
         expand(rules.process.output, sample=list(samples.sample_label)),
-        proc_report_dir + config['basecaller'] + '/sequencing_summary.txt'
+        proc_report_dir + config['basecaller'] + '/sequencing_summary.txt',
+        rules._proc_req_keys_present.output
 

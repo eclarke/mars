@@ -13,5 +13,22 @@ snakemake.utils.min_version("5.2")
 
 samples = mars.parse_samples(config['samplesheet_fp'])
 
+rule list_workflows:
+    message:
+        (
+            "\nAvailable workflows:\n"
+            " - process_all: basecall, demultiplex and adapter-trim reads using one of the basecallers\n"
+            " - assemble_all: assemble all samples using one of the assemblers\n"
+            " - polish_all: polish all assemblies using Nanopolish\n"
+            "Available basecallers:\n"
+            " - guppy\n"
+            " - albacore\n"
+            "Available assemblers:\n"
+            " - canu (de novo)\n"
+            " - unicycler (de novo)\n"
+            " - rebaler (reference)\n\n"
+            "Run a workflow with `mars run <configfile> <workflow>`"
+        )
+
 include: resource_filename("mars", "snakemake/processing.rules")
 include: resource_filename("mars", "snakemake/assembling.rules")
