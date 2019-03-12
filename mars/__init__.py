@@ -1,6 +1,7 @@
 import sys
 import yaml
 import warnings
+import textwrap
 from pathlib import Path
 from itertools import chain
 from pkg_resources import resource_stream, get_distribution
@@ -129,27 +130,35 @@ def resolve_paths(config):
             updated_config[key] = str(Path(value).expanduser().resolve())
     return updated_config
 
-def create_empty_config(output_dir, samplesheet_fp):
+def create_config(**kwargs):
     schema = yaml.load(
         resource_stream("mars", "data/config.schema.yaml").read().decode())
     out =  "# MARS configuration file\n"
     out += "# Created with MARS v{}\n\n".format(__version__)
-    required = schema['required']
+    reqs = schema['required']
+    target_reqs = schema['target_requirements']
+    asm_reqs = schema['assembler_requirements']
     for key, value in schema['properties'].items():
-        is_required = 'required' if key in required else 'optional'
-        default = value.get('default')
+        key_required_by = []
+        if key in reqs:
+            key_required_by.append('all')
+        for target in target_reqs:
+            if key in target_reqs[target]:
+                key_required_by.append(target + ' workflow')
+        for asm in asm_reqs:
+            if key in asm_reqs[asm]:
+                key_required_by.append(asm + ' assembler')
+        req_str = "Required by "+", ".join(key_required_by) if key_required_by else "Optional"
+
         _desc = value['description']
         _type = value['type']
-        if key == 'output_dir':
-            default = output_dir
-        if key == 'samplesheet_fp':
-            default = samplesheet_fp
-        if default is None:
-            default = ''
-        #default = default if default is not None else 'null'
-        out += "# {} [{}, {}] \n".format(_desc, _type, is_required)
-        if key in required:
+        helpstr = "# {} ({}). {}.".format(_desc, _type, req_str)
+        wrapper = textwrap.TextWrapper(subsequent_indent="# ", width=70)
+        helpstr = wrapper.fill(helpstr)
+        out += helpstr + '\n'
+        default = kwargs.get(key, '')
+        if default:
             out += "{}: {}\n\n".format(key, default)
         else:
-            out += "#{}: {}\n\n".format(key, default)
+            out += "#{}: \n\n".format(key)
     return(out)

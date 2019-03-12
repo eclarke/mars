@@ -47,22 +47,25 @@ def main():
 def Init(argv):
     parser = argparse.ArgumentParser(
         "mars init",
-        usage="%(prog)s [-o output_dir] [-s samplesheet_fp] > config.yaml",
-        description = "Creates an empty config file for MARS",
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+        description = "Creates a config file for MARS, optionally populated with values")
     parser.add_argument(
-        '-o', '--output_dir', required=True,
-        help="Desired MARS output directory for this project")
+        '-o', '--output', default=sys.stdout, type=argparse.FileType('w'),
+        help="Output file to write config file (default: stdout)")
     parser.add_argument(
-        '-s', '--samplesheet_fp', required=True,
-        help="Path to sample sheet for this project")
-
+        "values", nargs=argparse.REMAINDER,
+        help="Config values to be added to the config file in format `key:value`")
     args = parser.parse_args(argv)
-    output_dir = str(Path(args.output_dir).expanduser().resolve())
-    samplesheet_fp = str(Path(args.samplesheet_fp).expanduser().resolve())
-    sys.stdout.write(create_empty_config(output_dir, samplesheet_fp))
+    values = {}
+    for kv_pair in args.values:
+        try:
+            key, value = kv_pair.strip().split(":")
+            values[key] = value
+        except ValueError as e:
+            mars_error("Could not parse key:value '{}': {}".format(kv_pair, e))
+
+    args.output.write(create_config(**values))
     sys.stderr.write(
-        "Note: Optional options are commented out in the config file.\n"
+        "Note: Config values not specified are commented out in the config file.\n"
         "Uncomment the relevant lines and add appropriate values as necessary.\n")
 
     
