@@ -63,27 +63,19 @@ After filling it out, choose File -> Download as... -> Tab-separated values and 
 
 #### Create a config file
 
-Once you've created the sample sheet, use `mars init` to create a config file template.
-`mars init` requires two arguments:
+Once you've created the sample sheet, use `mars init` to create an empty config file.
+Each config value has a description above it, including which MARS workflows its required by.
+To prefill certain pairs during creation, specify them as `key:value` pairs (note: it's a good idea to use absolute paths here).
 
-- `output_dir`: the directory to store all output from MARS
-- `samplesheet_fp`: the path to the sample sheet you created above.
-
-By default it writes the config file to the screen.
-Use redirection (`>`) to pipe it to a file to save it.
-
+Creating a totally empty config file:
 ```bash
-mars init --output_dir mars_output --samplesheet_fp samples.tsv > project_name.yaml
+mars init
 ```
 
-MARS has a lot of configuration options, which are described by a comment over each option.
-Options that are not required by all rules are commented-out by default. 
-
-Steps that require certain configuration options will let you know during execution.
-Edit the config file, uncomment that option by removing the `#` and specify a value.
-
-Other options have reasonable defaults specified, like the number of threads given to any program.
-To override the defaults, uncomment the corresponding `[program]_threads: ` option and specify a number.
+Pre-fill important info and write it to `project.marsconfig`:
+```bash
+mars init --output project.marsconfig output_dir:/project/mars_out samplesheet_fp:/project/samples.tsv
+```
 
 **Config Validation:**
 Config options that end in `_dir` or `_fp` must be paths to valid directories or files, respectively.
@@ -96,10 +88,12 @@ MARS will complain if they're invalid, saving you the headache of debugging some
 Running MARS is straightforward. Just type:
 
 ```bash
-mars run my_project.yaml [task name] [any Snakemake options]
+mars run my_project.yaml <workflow> [any Snakemake options]
 ```
 
-The tasks currently available are:
+MARS will give you a helpful error message if any of the config values required for the workflow are not specified in the config file.
+
+The workflows currently available are:
 
 - `process_all`: Basecalls, demultiplexes, and trims adapters from a set of .fast5 files using the specified basecaller.
 - `assemble_all`: Assembles each sample using the specified assembler.
