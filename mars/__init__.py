@@ -1,5 +1,5 @@
-import sys
 import yaml
+import logging
 import warnings
 import textwrap
 from pathlib import Path
@@ -9,10 +9,25 @@ from pkg_resources import resource_stream, get_distribution
 import pandas as pd
 import snakemake.utils
 import jsonschema.exceptions
+import coloredlogs
 from snakemake.exceptions import WorkflowError
 from snakemake.io import _load_configfile
 
 __version__ = get_distribution(__name__).version
+
+logger = logging.getLogger(__name__)
+_level_styles = coloredlogs.DEFAULT_LEVEL_STYLES
+_level_styles['error']={'color':'red', 'bold':True}
+_field_styles = coloredlogs.DEFAULT_FIELD_STYLES
+_field_styles['levelname']={'color':'green'}
+coloredlogs.install(
+    level='DEBUG',
+    logger=logger,
+    style="{",
+    fmt="{levelname:>7} {name}: {message}",
+    level_styles=_level_styles,
+    field_styles=_field_styles
+)
 
 def padded_barcodes(samples):
     return [str(b).zfill(2) for b in samples.barcode]
@@ -79,7 +94,7 @@ def validate(data, schema):
         if properties and not Path(instance).expanduser().exists():
             yield jsonschema.exceptions.ValidationError("{} does not exist".format(instance))
     
-    @format_checker.checks('filepath')
+    @format_checker.checks('file')
     def check_filepath(value):
         path = Path(value)
         return path.is_file() if path.exists() else True
@@ -92,21 +107,22 @@ def validate(data, schema):
     all_validators = dict(Draft4Validator.VALIDATORS)
     all_validators['must_exist'] = path_exists
     
-    MyValidator = validators.create(
+    Validator = validators.create(
         meta_schema=Draft4Validator.META_SCHEMA,
         validators=all_validators)
 
-    my_validator = MyValidator(schema, resolver=resolver, format_checker = format_checker)
+    validator = Validator(
+        schema, resolver=resolver, format_checker = format_checker)
     
     errors = []
-
+    # Defer to snakemake's validate for handling samplesheet validation
     if not isinstance(data, dict):
         try:
             _validate(data, schemafile)
         except MarsValidationError as e:
             errors.append(e)
     else:
-        for ve in my_validator.iter_errors(data):
+        for ve in validator.iter_errors(data):
             key = ve.relative_path.pop() if len(ve.relative_path) > 0 else None
             errors.append(MarsValidationError(
                 ve.instance, key, ve.message))
@@ -121,7 +137,6 @@ def _validate(data, schema):
             raise we
         raise MarsValidationError(
             ve.instance, ve.relative_path.pop(), ve.message) from None
-
 
 def resolve_paths(config):
     updated_config = config
@@ -144,14 +159,15 @@ def create_config(**kwargs):
             key_required_by.append('all')
         for target in target_reqs:
             if key in target_reqs[target]:
-                key_required_by.append(target + ' workflow')
+                key_required_by.append(target+' workflow')
         for asm in asm_reqs:
             if key in asm_reqs[asm]:
                 key_required_by.append(asm + ' assembler')
         req_str = "Required by "+", ".join(key_required_by) if key_required_by else "Optional"
-
         _desc = value['description']
         _type = value['type']
+        if 'enum' in value:
+            _type += ", one of "+", ".join(value['enum'])
         helpstr = "# {} ({}). {}.".format(_desc, _type, req_str)
         wrapper = textwrap.TextWrapper(subsequent_indent="# ", width=70)
         helpstr = wrapper.fill(helpstr)
@@ -161,4 +177,5 @@ def create_config(**kwargs):
             out += "{}: {}\n\n".format(key, default)
         else:
             out += "#{}: \n\n".format(key)
-    return(out)
+    unused_keys = [k for k in kwargs if k not in schema['properties']]
+    return((out, unused_keys))

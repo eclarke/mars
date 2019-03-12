@@ -9,7 +9,7 @@ properties:
   samplesheet_fp:
     description: "Path to samplesheet, in tab-delimited format"
     type: string
-    format: filepath
+    format: file
     must_exist: True
   fast5_dir:
     description: "Path to directory containing fast5 files (searched recursively)"
@@ -71,7 +71,7 @@ properties:
   ref_genome_fp:
     description: "Path to reference genome in FASTA format"
     type: string
-    format: filepath
+    format: file
     must_exist: True
 required:
   - output_dir

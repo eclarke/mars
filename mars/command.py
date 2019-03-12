@@ -13,7 +13,7 @@ from . import *
 from . import __version__
 
 def mars_error(message):
-    sys.stderr.write("MARS: Fatal error: {}\n".format(message))
+    logger.error(message)
     sys.exit(2)
 
 def main():
@@ -62,26 +62,23 @@ def Init(argv):
             values[key] = value
         except ValueError as e:
             mars_error("Could not parse key:value '{}': {}".format(kv_pair, e))
-
-    args.output.write(create_config(**values))
-    sys.stderr.write(
-        "Note: Config values not specified are commented out in the config file.\n"
+    config, unused_keys = create_config(**values)
+    args.output.write(config)
+    if unused_keys:
+        logger.warn(
+            "Warning: the following keys were specified but unused: {}\n".format(unused_keys))
+    logger.info(
+        "Config values not specified are commented out in the config file.\n"
         "Uncomment the relevant lines and add appropriate values as necessary.\n")
 
     
 def Run(argv):
     usage_str = (
-        "%(prog)s <configfile> [mars options] [snakemake options]")
-    epilog_str = (
-        "You can pass any Snakemake arguments to MARS, e.g:\n"
-        "    $ mars run <configfile> --cores 12\n"
-        " ")
-
+        "%(prog)s <configfile> <workflow> [snakemake options]")
     parser = argparse.ArgumentParser(
         "mars run",
         usage=usage_str,
         description="Executes the MARS pipeline by calling Snakemake.",
-        epilog=epilog_str,
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument(
@@ -94,8 +91,8 @@ def Run(argv):
     
     snakefile = resource_filename("mars", "snakemake/Snakefile")
 
-    sys.stderr.write(
-        "MARS: Validating config file values and paths...\n")
+    logger.info(
+        "Validating config file values and paths...")
 
     config = yaml.load(args.configfile)
     config_schemafile = resource_filename("mars", "data/config.schema.yaml")
@@ -106,12 +103,6 @@ def Run(argv):
         mars_error(
             "The following keys must be defined and uncommented in your config file: {}".format(_missing))
         
-    # _missing = check_target_requirements(target, config, config_schema)
-    # if _missing:
-    #     mars_error(
-    #         "Selected workflow ('{}') requires the following keys to be "
-    #         "defined and uncommented in your config file: {}".format(target, _missing))
-
     _missing = check_assembler_requirements(config, config_schema)
     if _missing:
         mars_error(
@@ -120,34 +111,34 @@ def Run(argv):
     
     config_errors = validate(config, config_schemafile)
     if config_errors:
-        sys.stderr.write("  Found {} invalid values(s) in config file:\n".format(len(config_errors)))
+        logger.warn("Found {} invalid values(s) in config file:".format(len(config_errors)))
         for e in config_errors:
-            sys.stderr.write("  - {}: {}\n".format(e.key, e.reason))
+            logger.warn("{}: {}".format(e.key, e.reason))
         mars_error("Invalid values in config file")
 
-    sys.stderr.write("MARS: Validating sample sheet...\n")
+    logger.info("Validating sample sheet...")
 
     samplesheet = config['samplesheet_fp']
     samples = parse_samples(samplesheet)
     samplesheet_errors = validate(samples, resource_filename("mars", "data/samplesheet.schema.yaml"))
     if samplesheet_errors:
-        e = samplesheet_errors[0] # There's only ever one
+        e = samplesheet_errors[0] # There can be only one (from the sample sheet)
         if e.key == "barcode":
-            sys.stderr.write("  Sheet contains an invalid barcode: ensure all barcodes are numbers between 1-96\n")
+            logger.error("  Sheet contains an invalid barcode: ensure all barcodes are numbers between 1-96")
         elif e.key == "sample_label":
-            sys.stderr.write("  Sheet contains an invalid sample_label: ensure all labels are alphanumeric or ._- characters\n")
+            logger.error("  Sheet contains an invalid sample_label: ensure all labels are alphanumeric or ._- characters")
         else:
-            sys.stderr.write("  Invalid value: {}: {}\n".format(e.key, e.reason))
+            logger.error("  Invalid value: {}: {}\n".format(e.key, e.reason))
         mars_error("Invalid rows in sample sheet")
         
-    sys.stderr.write("MARS: Resolving paths in config file...\n")
+    logger.info("Resolving paths in config file...")
     config = resolve_paths(config)
 
     tmp_config_fp = ''
     with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp_config:
         yaml.dump(config, tmp_config)
         tmp_config_fp = tmp_config.name
-    sys.stderr.write("MARS: Updated config file written to '{}'\n".format(tmp_config_fp))
+    logger.info("Updated config file written to '{}'".format(tmp_config_fp))
 
     snakemake_args = [
         'snakemake', '--use-conda', '--snakefile', snakefile,
@@ -155,24 +146,20 @@ def Run(argv):
     dotgraph = subprocess.run(snakemake_args + ["--rulegraph"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     _missing = []
     for target in detect_target_from_dotgraph(dotgraph.stdout.decode(), config_schema):
-        print(target)
         _missing += check_target_requirements(target, config, config_schema)
         if _missing:
             mars_error(
                 "The selected workflow requires the following keys to be defined "
                 "and uncommented in your config file: {}".format(_missing))
     
-    sys.stderr.write("MARS: Executing Snakemake:\n")
+    logger.info("Executing Snakemake...")
 
-    snakemake_args = [
-        'snakemake', '--use-conda', '--snakefile', snakefile,
-        '--configfile', tmp_config_fp] + remaining
-    sys.stderr.write("  {}\n\n".format(" ".join(snakemake_args)))
+    logger.info("  " + " ".join(snakemake_args))
     cmd = subprocess.run(snakemake_args)
     if cmd.returncode > 0:
-        sys.stderr.write("MARS: Error occurred during Snakemake execution.\n")
+        mars_error("Error occurred during Snakemake execution.", cmd.returncode)
     else:
-        sys.stderr.write("MARS: Exiting without errors.\n")
+        logger.info("Snakemake finished without errors.")
     return cmd.returncode
         
     
