@@ -3,7 +3,7 @@
 #=====================================================#
 from pkg_resources import resource_filename
 
-from mars import padded_barcodes, required_config_keys
+from mars import padded_barcodes
 
 asm_working_dir = config['output_dir'] + '/assembling_temp/'
 asm_output_dir = config['output_dir'] + '/assemblies/'
@@ -24,8 +24,6 @@ rule assemble_canu:
         config.get('canu_threads', 4)
     conda:
         resource_filename("mars", "snakemake/envs/assembling.yaml")
-    message:
-        required_config_keys('ref_genome_size', 'canu_max_mem')
     shell:
         """
         canu -p canu -d {params.out_dir} \
@@ -65,8 +63,6 @@ rule assemble_rebaler:
         reference = config.get('ref_genome_fp')
     conda:
         resource_filename("mars", "snakemake/envs/assembling.yaml")
-    message:
-        required_config_keys('ref_genome_fp')
     shell:
         "rebaler -t {threads} {params.reference} {input.reads} > {output}"
 
@@ -74,8 +70,6 @@ rule assemble:
     input: asm_output_dir + '{sample}/{assembler}/assembly.fasta'
 
 rule assemble_all:
-    message:
-        required_config_keys('assembler')
     input:
         expand(
             rules.assemble.input,
@@ -112,15 +106,13 @@ rule nanopolish_index:
     '''
     input:
         fastq = rules.process.output,
-        summary = proc_report_dir + config['basecaller'] + '/sequencing_summary.txt'
+        summary = proc_report_dir + config.get('basecaller', '') + '/sequencing_summary.txt'
     output:
         proc_output_dir + '{sample}.fastq.gz.index.readdb'
     params:
         fast5 = config.get('fast5_dir', 'MISSING')
     conda:
         resource_filename("mars", "snakemake/envs/assembling.yaml")
-    message:
-        required_config_keys('fast5_dir')
     shell:
         "nanopolish index -d {params.fast5} -s {input.summary} {input.fastq}"
 
@@ -159,7 +151,8 @@ rule nanopolish_vcf2fasta:
 
     
 rule polish:
-    input:rules.nanopolish_vcf2fasta.output
+    input:
+        rules.nanopolish_vcf2fasta.output
 
 rule polish_all:
     input:

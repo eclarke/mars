@@ -6,11 +6,15 @@ import subprocess
 from pathlib import Path
 from pkg_resources import resource_filename
 
-from snakemake.utils import validate, update_config
+from snakemake.utils import update_config
 from snakemake.exceptions import WorkflowError
 
 from . import *
 from . import __version__
+
+def mars_error(message):
+    sys.stderr.write("MARS: Fatal error: {}\n".format(message))
+    sys.exit(2)
 
 def main():
     usage_str = "%(prog)s [--version] <subcommand>"
@@ -87,55 +91,76 @@ def Run(argv):
     
     snakefile = resource_filename("mars", "snakemake/Snakefile")
 
-    sys.stderr.write("MARS: Loading config file and sample sheet...\n")
-    config = yaml.load(args.configfile)
-    samplesheet = config.get('samplesheet_fp')
-    if samplesheet is None:
-        raise ValueError(
-            "No valid sample sheet path found in config file.\nSpecify one using"
-            " in the config file under 'samplesheet_fp'.")
-    if not Path(samplesheet).exists() or not Path(samplesheet).is_file():
-        raise ConfigPathError(
-            "Path to specified sample sheet in config file is not a "
-            "file or does not exist.")
-
-    # All metadata values are added to the config file as key:value pairs
-    # for validation
-    sys.stderr.write("MARS: Reading metadata header from sample sheet...\n")
-    try:
-        metadata = parse_metadata(samplesheet)
-        sys.stderr.write(
-            "MARS: Found {} metadata keys(s) in sample sheet: {}\n".format(
-                len(metadata), list(metadata.keys())))
-        if metadata:
-            sys.stderr.write("  Updating config file with metadata keys...\n")
-            update_config(config, metadata)
-    except ValueError as e:
-        raise e
-        sys.stderr.write(
-            "  Non-fatal error parsing metadata in sample sheet: \n\t{}: {}\n"
-            "  Ensure the metadata lines follow the format '# key[tab]value'.\n"
-            "  Ignoring metadata and continuing...\n".format(type(e).__name__, e))
-
     sys.stderr.write(
         "MARS: Validating config file values and paths...\n")
 
-    config_schema = resource_filename("mars", "data/config.schema.yaml")
-    validate(config, config_schema)
-    validate_paths(config, config_schema)
+    config = yaml.load(args.configfile)
+    config_schemafile = resource_filename("mars", "data/config.schema.yaml")
+    config_schema = yaml.load(open(config_schemafile))
+
+    _missing = check_universal_requirements(config, config_schema)
+    if _missing:
+        mars_error(
+            "The following keys must be defined and uncommented in your config file: {}".format(_missing))
+        
+    # _missing = check_target_requirements(target, config, config_schema)
+    # if _missing:
+    #     mars_error(
+    #         "Selected workflow ('{}') requires the following keys to be "
+    #         "defined and uncommented in your config file: {}".format(target, _missing))
+
+    _missing = check_assembler_requirements(config, config_schema)
+    if _missing:
+        mars_error(
+            "Selected assembler ('{}') requires the following keys to be "
+            "defined and uncommented in your config file: {}".format(config['assembler'], _missing))
+    
+    config_errors = validate(config, config_schemafile)
+    if config_errors:
+        sys.stderr.write("  Found {} invalid values(s) in config file:\n".format(len(config_errors)))
+        for e in config_errors:
+            sys.stderr.write("  - {}: {}\n".format(e.key, e.reason))
+        mars_error("Invalid values in config file")
 
     sys.stderr.write("MARS: Validating sample sheet...\n")
-    samples = parse_samples(samplesheet)
-    validate(samples, resource_filename("mars", "data/samplesheet.schema.yaml"))
 
+    samplesheet = config['samplesheet_fp']
+    samples = parse_samples(samplesheet)
+    samplesheet_errors = validate(samples, resource_filename("mars", "data/samplesheet.schema.yaml"))
+    if samplesheet_errors:
+        e = samplesheet_errors[0] # There's only ever one
+        if e.key == "barcode":
+            sys.stderr.write("  Sheet contains an invalid barcode: ensure all barcodes are numbers between 1-96\n")
+        elif e.key == "sample_label":
+            sys.stderr.write("  Sheet contains an invalid sample_label: ensure all labels are alphanumeric or ._- characters\n")
+        else:
+            sys.stderr.write("  Invalid value: {}: {}\n".format(e.key, e.reason))
+        mars_error("Invalid rows in sample sheet")
+        
     sys.stderr.write("MARS: Resolving paths in config file...\n")
     config = resolve_paths(config)
+
     tmp_config_fp = ''
     with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp_config:
         yaml.dump(config, tmp_config)
         tmp_config_fp = tmp_config.name
-    sys.stderr.write("MARS: Updated config file saved to '{}'\n".format(tmp_config_fp))
+    sys.stderr.write("MARS: Updated config file written to '{}'\n".format(tmp_config_fp))
+
+    snakemake_args = [
+        'snakemake', '--use-conda', '--snakefile', snakefile,
+        '--configfile', tmp_config_fp] + remaining
+    dotgraph = subprocess.run(snakemake_args + ["--rulegraph"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    _missing = []
+    for target in detect_target_from_dotgraph(dotgraph.stdout.decode(), config_schema):
+        print(target)
+        _missing += check_target_requirements(target, config, config_schema)
+        if _missing:
+            mars_error(
+                "The selected workflow requires the following keys to be defined "
+                "and uncommented in your config file: {}".format(_missing))
+    
     sys.stderr.write("MARS: Executing Snakemake:\n")
+
     snakemake_args = [
         'snakemake', '--use-conda', '--snakefile', snakefile,
         '--configfile', tmp_config_fp] + remaining

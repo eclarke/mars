@@ -4,12 +4,18 @@ properties:
   output_dir:
     description: "Path to output directory for MARS"
     type: string
+    format: directory
+    must_exist: False
   samplesheet_fp:
     description: "Path to samplesheet, in tab-delimited format"
     type: string
+    format: filepath
+    must_exist: True
   fast5_dir:
     description: "Path to directory containing fast5 files (searched recursively)"
     type: string
+    format: directory
+    must_exist: True
   basecaller:
     description: "ONT basecaller to use"
     type: string
@@ -26,11 +32,11 @@ properties:
     type: string
     default: "SQK-RBK004"
   guppy_threads:
-    description: "Threads to allocate to Guppy"
+    description: "Threads to provide to Guppy"
     type: number
     minimum: 1
   albacore_threads:
-    description: "Threads to allocate to Albacore"
+    description: "Threads to provide to Albacore"
     type: number
     minimum: 1
   assembler:
@@ -68,9 +74,27 @@ properties:
   ref_genome_fp:
     description: "Path to reference genome in FASTA format"
     type: string
+    format: filepath
+    must_exist: True
 required:
   - output_dir
   - samplesheet_fp
-    
-    
-    
+  - basecaller
+target_requirements:
+  assemble:
+    - assembler
+  process:
+    - basecaller
+    - fast5_dir
+    - flowcell
+    - kit
+  polish:
+    - basecaller
+    - assembler
+    - fast5_dir
+assembler_requirements:
+  canu:
+    - canu_max_mem
+    - ref_genome_size
+  rebaler:
+    - ref_genome_fp

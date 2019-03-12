@@ -5,7 +5,7 @@ properties:
     description: "Sequencing kit barcode number, 1-12"
     type: number
     minimum: 1
-    maximum: 12
+    maximum: 96
   sample_label:
     description: "Sample label, optionally denoting run and barcode number"
     type: string

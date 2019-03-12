@@ -6,91 +6,121 @@ from itertools import chain
 from pkg_resources import resource_stream, get_distribution
 
 import pandas as pd
+import snakemake.utils
+import jsonschema.exceptions
+from snakemake.exceptions import WorkflowError
+from snakemake.io import _load_configfile
 
 __version__ = get_distribution(__name__).version
 
 def padded_barcodes(samples):
     return [str(b).zfill(2) for b in samples.barcode]
 
-def parse_metadata(samplesheet_fp):
-    metadata = {}
-    with open(samplesheet_fp) as samplesheet:
-        for i, line in enumerate(samplesheet):
-            try:
-                if line.startswith("#"):
-                    key, value = line.strip("# ").split('\t')
-                    metadata[key] = value.strip()
-            except ValueError as e:
-                raise ValueError(
-                    "Could not parse metadata from line {}: '{}'".format(i+1, line.strip())) from e
-    return metadata
-
 def parse_samples(samplesheet_fp):
     return pd.read_csv(
         samplesheet_fp,
         header=0,
         comment="#",
-        dtype={'sample_id':'str', 'sample_label':'str', 'description':'str'},
         sep='\t')
 
-def required_config_keys(*keys):
-    return (
-        "Note: this task requires these config options: [{}]"
-        "\n\tBe sure they are defined and uncommented in your config file."
-        ).format(", ".join(keys))
+def _check_keys(config, required):
+    missing = []
+    for rk in required:
+        if rk not in config:
+            missing.append(rk)
+    return missing
 
-class ConfigPathWarning(UserWarning):
-    pass
+def check_universal_requirements(config, schema):
+    reqs = schema.get("required", {})
+    return _check_keys(config, reqs)
 
-class ConfigPathError(ValueError):
-    pass
+def check_target_requirements(target, config, schema):
+    target_reqs = schema.get("target_requirements", {})
+    if target:
+        reqs = target_reqs[target]
+        return _check_keys(config, reqs)
 
-def validate_paths(config, schema):
-    schema = yaml.load(open(schema).read())
-    updated_config = config
+def check_assembler_requirements(config, schema):
+    if 'assembler' in config:
+        assembler_reqs = schema.get("assembler_requirements", {})
+        reqs = assembler_reqs.get(config['assembler'], [])
+        return _check_keys(config, reqs)
 
-    # By default the warnings show source file and source line.
-    # This makes warnings just show the warning category and message.
-    def formatwarning(message, category, filename, lineno, line):
-        return "  {}: {}\n".format(category.__name__, message)
-    warnings.formatwarning = formatwarning
-        
-    def error_or_warning(required, key, value, message):
-        message = message.format(key, value)
-        if required:
-            raise ConfigPathError(message)
-        else:
-            warnings.warn(message, ConfigPathWarning)
+def detect_target_from_dotgraph(dotgraph, schema):
+    targets = schema.get("target_requirements", {})
+    for target in targets:
+        if 'label = "{}'.format(target) in dotgraph:
+            yield target
     
-    for key, value in config.items():
-        is_required = key in schema['required']
-        if key.endswith("_dir") or key.endswith("_fp"):
-            path = Path(value)
-            if not path.exists() and key != "output_dir":
-                error_or_warning(
-                    is_required, key, value,
-                    "Path for '{}' does not exist: '{}'")
-                continue
-            # 'output_dir' doesn't need to exist at runtime, Snakemake will
-            # create it if necessary
-            if key.endswith("_dir") and key != "output_dir":
-                if not path.is_dir():
-                    error_or_warning(
-                        is_required, key, value,
-                        "Path for '{}' is not a directory: '{}'")
-                    continue
-            elif key.endswith("_fp"):
-                if not path.is_file():
-                    if path.is_dir():
-                        error_or_warning(
-                            is_required, key, value,
-                            "'{}' must be a file, not a directory: '{}'")
-                        continue
-                    else:
-                        error_or_warning(
-                            is_required, key, value,
-                            "Path for '{}' is not a regular file: '{}'")
-                        continue
+class MarsValidationError(Exception):
+    def __init__(self, bad_value, key, reason, line=None):
+        self.bad_value = bad_value
+        self.key = key
+        self.reason = reason
+        self.line = line
+        super().__init__(reason)
+
+def validate(data, schema):
+    from jsonschema import RefResolver, validators, FormatChecker, Draft4Validator
+    from urllib.parse import urljoin
+    from snakemake.io import _load_configfile
+
+    schemafile = schema
+    schema = _load_configfile(schema, filetype="Schema")
+    
+    resolver = RefResolver(
+        urljoin('file:', schemafile), schema,
+        handlers={'file': lambda uri: _load_configfile(re.sub("^file://", "", uri))})
+
+    format_checker = FormatChecker()
+
+    def path_exists(validator, properties, instance, schema):
+        if properties and not Path(instance).expanduser().exists():
+            yield jsonschema.exceptions.ValidationError("{} does not exist".format(instance))
+    
+    @format_checker.checks('filepath')
+    def check_filepath(value):
+        path = Path(value)
+        return path.is_file() if path.exists() else True
+
+    @format_checker.checks('directory')
+    def check_directory(value):
+        path = Path(value)
+        return path.is_dir() if path.exists() else True
+    
+    all_validators = dict(Draft4Validator.VALIDATORS)
+    all_validators['must_exist'] = path_exists
+    
+    MyValidator = validators.create(
+        meta_schema=Draft4Validator.META_SCHEMA,
+        validators=all_validators)
+
+    my_validator = MyValidator(schema, resolver=resolver, format_checker = format_checker)
+    
+    errors = []
+
+    if not isinstance(data, dict):
+        try:
+            _validate(data, schemafile)
+        except MarsValidationError as e:
+            errors.append(e)
+    else:
+        for ve in my_validator.iter_errors(data):
+            key = ve.relative_path.pop() if len(ve.relative_path) > 0 else None
+            errors.append(MarsValidationError(
+                ve.instance, key, ve.message))
+    return errors
+        
+def _validate(data, schema):
+    try:
+        snakemake.utils.validate(data, schema)
+    except WorkflowError as we:
+        ve = we.__context__
+        if not isinstance(ve, jsonschema.exceptions.ValidationError):
+            raise we
+        raise MarsValidationError(
+            ve.instance, ve.relative_path.pop(), ve.message) from None
+
 
 def resolve_paths(config):
     updated_config = config
@@ -121,5 +151,5 @@ def create_empty_config(output_dir, samplesheet_fp):
         if key in required:
             out += "{}: {}\n\n".format(key, default)
         else:
-            out += "# {}: {}\n\n".format(key, default)
+            out += "#{}: {}\n\n".format(key, default)
     return(out)
