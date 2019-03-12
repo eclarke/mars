@@ -34,15 +34,12 @@ To begin, MARS needs a sample sheet in tab-delimited format with two columns: `b
 `sample_label` should contain no spaces and a sample label can appear multiple times.
 MARS will yell at you if you violate either of these rules.
 Other columns are currently ignored and can be used for whatever you want.
+Any lines beginning with a '#' are considered comments and will be ignored.
 
 **Technical replicates:**
 If a sample was split among multiple barcodes, you can choose to give those barcodes the same sample label.
 MARS will pool the reads from all barcodes belonging to the same sample label during assembly steps.
 
-**Run metadata:**
-Additional run info can be encoded in the header in lines starting with '#' using the format `# key[tab]value`.
-(The key-value pairs are tab-separated so you can enter them in adjacent cells in Excel, etc and export as tab-separated list.)
-These will be automatically parsed as key:value pairs and added to the configuration file.
 
 Here is an example sample sheet:
 
@@ -81,7 +78,7 @@ mars init --output project.marsconfig output_dir:/project/mars_out samplesheet_f
 Config options that end in `_dir` or `_fp` must be paths to valid directories or files, respectively.
 MARS will resolve any relative paths against the directory it's executed from, and stop if any paths besides `output_dir` do not exist.
 In addition, some config options' values must be numbers (as noted in the config file).
-MARS will complain if they're invalid, saving you the headache of debugging some random Snakemake error down the line.
+MARS will complain if they're not, saving you the headache of debugging some random Snakemake error down the line.
 
 ### Running
 
@@ -115,8 +112,6 @@ Specify the desired basecaller and/or assembler in the config file.
 #### Snakemake options
 
 Since MARS calls Snakemake to execute each step, you can pass any Snakemake options to `mars run` and they will be transparently passed to Snakemake during execution.
-
-MARS automatically calls `--use-conda` as it is required for dependency management.
 
 
 
