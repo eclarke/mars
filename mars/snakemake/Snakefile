@@ -32,3 +32,4 @@ rule list_workflows:
 
 include: resource_filename("mars", "snakemake/processing.rules")
 include: resource_filename("mars", "snakemake/assembling.rules")
+include: resource_filename("mars", "snakemake/polishing.rules")

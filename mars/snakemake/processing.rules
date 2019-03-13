@@ -1,5 +1,5 @@
 #====================================================#
-# MARS|processing: MARS Processing/Reporting Module  #
+# MARS/process: MARS Processing/Reporting Workflow   #
 #====================================================#
 
 from mars import padded_barcodes

@@ -12,9 +12,9 @@ from snakemake.exceptions import WorkflowError
 from . import *
 from . import __version__
 
-def mars_error(message):
+def mars_error(message, returncode=2):
     logger.error(message)
-    sys.exit(2)
+    sys.exit(returncode)
 
 def main():
     usage_str = "%(prog)s [--version] <subcommand>"
