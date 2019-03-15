@@ -78,6 +78,24 @@ rule nanopolish_vcf2fasta:
         nanopolish vcf2fasta -g {input.contigs} \
         {input.variants}/polished.*.vcf > {output}
         """
+
+rule assess_polished_quast:
+    input:
+        rules.nanopolish_vcf2fasta.output
+    output:
+        directory(pol_report_dir + '{sample}/{assembler}/quast')
+    conda:
+        resource_filename("mars", "snakemake/envs/assembling.yaml")
+    threads:
+        config.get("quast_threads", 8)    
+    shell:
+        """
+        quast {input} \
+        -o {output} \
+        -r {config[ref_genome_fp]} \
+        -g {config[ref_genome_features_fp]} \
+        -t {threads}
+        """
     
 rule polish:
     input:
@@ -85,7 +103,11 @@ rule polish:
 
 rule polish_all:
     input:
-        expand(
+        assemblies = expand(
             rules.polish.input,
+            assembler=config.get('assembler', ''),
+            sample=list(samples.sample_label)),
+        reports = expand(
+            rules.assess_assembled_quast.output,
             assembler=config.get('assembler', ''),
             sample=list(samples.sample_label))

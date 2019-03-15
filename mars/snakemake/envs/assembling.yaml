@@ -9,4 +9,5 @@ dependencies:
   - parallel=20180922
   - unicycler=0.4.7
   - rebaler=0.1.1
-  - canu=1.7.1
+  - canu=1.8
+  - quast=5.0.2
