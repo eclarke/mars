@@ -180,7 +180,7 @@ def create_config(**kwargs):
         default = kwargs.get(key, '')
         if not default:
             out += "#"            
-        if value['type'] == 'array':
+        if value['type'] == 'array' and not isinstance(default, list):
             out += "{}: [{}]\n\n".format(key, default)
         else:
             out += "{}: {}\n\n".format(key, default)

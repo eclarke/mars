@@ -49,27 +49,49 @@ def Init(argv):
         "mars init",
         description = "Creates a config file for MARS, optionally populated with values")
     parser.add_argument(
-        '-o', '--output', default=sys.stdout, type=argparse.FileType('w'),
+        '-o', '--output', type=argparse.FileType('a'), default=sys.stdout,
         help="Output file to write config file (default: stdout)")
     parser.add_argument(
+        '-c', '--configfile', type=argparse.FileType('r'),
+        help="Path to another config file whose values will be added to this one (where possible)")
+    parser.add_argument(
+        '--force', action='store_true', help="Overwite output file if it exists")
+    parser.add_argument(
         "values", nargs=argparse.REMAINDER,
-        help="Config values to be added to the config file in format `key:value`")
+        help=(
+            "Config values to be added to the config file in format "
+            "`key:value`. Overrides values from other config file if both "
+            "present."))
     args = parser.parse_args(argv)
-    values = {}
+    if Path(args.output.name).exists():
+        if args.force:
+            args.output.close()
+            args.output = open(args.output.name, 'w')
+        if not args.force:
+            mars_error("Chosen output file exists. Use --force to overwrite.")
+            
+    old_config = yaml.load(args.configfile) if args.configfile else {}
+    # Accidentally loading a blank file will return None from yaml.load()
+    if old_config is None:
+        old_config = {}
+    cmdline_kv = {}
     for kv_pair in args.values:
         try:
             key, value = kv_pair.strip().split(":")
-            values[key] = value
+            cmdline_kv[key] = value
         except ValueError as e:
             mars_error("Could not parse key:value '{}': {}".format(kv_pair, e))
-    config, unused_keys = create_config(**values)
+    update_config(old_config, cmdline_kv)
+    config, unused_keys = create_config(**old_config)
+
     args.output.write(config)
+    
     if unused_keys:
         logger.warn(
-            "Warning: the following keys were specified but unused: {}\n".format(unused_keys))
+            "Warning: the following keys were specified but unused: {}".format(unused_keys))
     logger.info(
-        "Config values not specified are commented out in the config file.\n"
-        "Uncomment the relevant lines and add appropriate values as necessary.\n")
+        "Config values not specified are commented out in the config file. "
+        "Uncomment the relevant lines and add appropriate values as necessary.")
 
     
 def Run(argv):
