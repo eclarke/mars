@@ -1,5 +1,7 @@
 name: processing
 channels:
   - bioconda
+  - conda-forge
 dependencies:
   - porechop=0.2.3
+  - filtlong

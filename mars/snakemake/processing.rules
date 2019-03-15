@@ -117,19 +117,50 @@ rule trim_adapters_albacore:
     threads:
         config.get('porechop_threads', 8)
     conda:
-        "../envs/porechop.yaml"
+        resource_filename("mars", "snakemake/envs/processing.yaml")
     shell:
         "porechop -i {input} -o {output} --threads {threads} --discard_middle"
 
-rule process:
+rule basecall:
     input:
         lambda wc: expand(
             proc_working_dir + config.get('basecaller', '') + '/barcode{bc}.fastq.gz',
             bc = padded_barcodes(samples.loc[samples['sample_label'] == wc.sample]))
     output:
-        proc_output_dir + '{sample}.fastq.gz'
+        proc_output_dir + 'unfiltered/{sample}.fastq.gz'
     shell:
         """cat {input} > {output}"""
+
+        
+rule quality_filter:
+    input:
+        rules.basecall.output
+    output:
+        proc_output_dir + 'filtered/{sample}.fastq.gz'
+    params:
+        min_length = config.get("filt_min_length", 1000),
+        length_weight = config.get("filt_length_weight", 10),
+        split_bp = config.get("filt_split_bp", 1000),
+        ref_genome_fp = (
+            '-a ' + config.get("ref_genome_fp") 
+            if "ref_genome_fp" in config else '')
+    conda:
+        resource_filename("mars", "snakemake/envs/processing.yaml")        
+    shell:
+        """
+        filtlong \
+        {params.ref_genome_fp} \
+        --min_length {params.min_length} \
+        --trim \
+        --length_weight {params.length_weight} \
+        --split {params.split_bp} \
+        {input} | gzip > {output}
+        """
+
+rule process:
+    input:
+        filtered=rules.quality_filter.output,
+        unfiltered=rules.basecall.output
         
 rule process_all:
     input:
