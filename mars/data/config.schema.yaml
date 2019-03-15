@@ -23,10 +23,10 @@ properties:
       - guppy
       - albacore
   flowcell:
-    description: "Nanopore flow cell used (from `read_fast5_basecaller.py -l`)"
+    description: "Nanopore flow cell"
     type: string
   kit:
-    description: "Nanopore library kit used (from `read_fast5_basecaller.py -l`)"
+    description: "Nanopore library kit"
     type: string
   guppy_threads:
     description: "Threads to provide to Guppy"
@@ -37,13 +37,14 @@ properties:
     type: number
     minimum: 1
   assembler:
-    description: "Assembler to use"
-    type: string
-    enum:
-      - canu
-      - unicycler
-      - rebaler
-    default: rebaler
+    description: "Assembler(s) to use"
+    type: array
+    items:
+      type: string
+      enum:
+        - canu
+        - unicycler
+        - rebaler
   canu_max_mem:
     description: "Memory to allocate to Canu, in megabytes"
     type: number
@@ -73,24 +74,31 @@ properties:
     type: string
     format: file
     must_exist: True
+  ref_genome_features_fp:
+    description: "Path to reference genome features file"
+    type: string
+    format: file
+    must_exist: True
 required:
   - output_dir
   - samplesheet_fp
 target_requirements:
-  assemble:
-    - assembler
   process:
     - basecaller
     - fast5_dir
     - flowcell
     - kit
+  assemble:
+    - assembler
+    - ref_genome_fp
+    - ref_genome_features_fp
   polish:
     - basecaller
     - assembler
     - fast5_dir
+    - ref_genome_fp
+    - ref_genome_features_fp
 assembler_requirements:
   canu:
     - canu_max_mem
     - ref_genome_size
-  rebaler:
-    - ref_genome_fp

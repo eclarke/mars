@@ -59,7 +59,10 @@ def check_target_requirements(target, config, schema):
 def check_assembler_requirements(config, schema):
     if 'assembler' in config:
         assembler_reqs = schema.get("assembler_requirements", {})
-        reqs = assembler_reqs.get(config['assembler'], [])
+        missing = set()
+        for asm in config['assembler']:
+            reqs = assembler_reqs.get(asm, [])
+            missing.update(_check_keys(config, reqs))
         return _check_keys(config, reqs)
 
 def detect_target_from_dotgraph(dotgraph, schema):
@@ -168,14 +171,18 @@ def create_config(**kwargs):
         _type = value['type']
         if 'enum' in value:
             _type += ", one of "+", ".join(value['enum'])
+        elif _type == 'array' and 'items' in value and 'enum' in value['items']:
+            _type += ", one or more of "+", ".join(value['items']['enum'])
         helpstr = "# {} ({}). {}.".format(_desc, _type, req_str)
         wrapper = textwrap.TextWrapper(subsequent_indent="# ", width=70)
         helpstr = wrapper.fill(helpstr)
         out += helpstr + '\n'
         default = kwargs.get(key, '')
-        if default:
-            out += "{}: {}\n\n".format(key, default)
+        if not default:
+            out += "#"            
+        if value['type'] == 'array':
+            out += "{}: [{}]\n\n".format(key, default)
         else:
-            out += "#{}: \n\n".format(key)
+            out += "{}: {}\n\n".format(key, default)
     unused_keys = [k for k in kwargs if k not in schema['properties']]
     return((out, unused_keys))
