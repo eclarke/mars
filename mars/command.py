@@ -49,7 +49,7 @@ def Init(argv):
         "mars init",
         description = "Creates a config file for MARS, optionally populated with values")
     parser.add_argument(
-        '-o', '--output', type=argparse.FileType('a'), default=sys.stdout,
+        '-o', '--output',
         help="Output file to write config file (default: stdout)")
     parser.add_argument(
         '-c', '--configfile', type=argparse.FileType('r'),
@@ -63,15 +63,15 @@ def Init(argv):
             "`key:value`. Overrides values from other config file if both "
             "present."))
     args = parser.parse_args(argv)
-    if Path(args.output.name).exists():
-        if args.force:
-            args.output.close()
-            args.output = open(args.output.name, 'w')
-        if not args.force:
-            mars_error("Chosen output file exists. Use --force to overwrite.")
+    if Path(args.output).exists() and not args.force:
+        mars_error("Chosen output file exists. Use --force to overwrite.")
+    elif args.output:
+        output = open(args.output, 'w')
+    else:
+        output = sys.stdout
             
-    old_config = yaml.load(args.configfile) if args.configfile else {}
-    # Accidentally loading a blank file will return None from yaml.load()
+    old_config = yaml.safe_load(args.configfile) if args.configfile else {}
+    # Loading a blank file will return None from yaml.safe_load()
     if old_config is None:
         old_config = {}
     cmdline_kv = {}
@@ -84,7 +84,7 @@ def Init(argv):
     update_config(old_config, cmdline_kv)
     config, unused_keys = create_config(**old_config)
 
-    args.output.write(config)
+    output.write(config)
     
     if unused_keys:
         logger.warn(
@@ -116,9 +116,9 @@ def Run(argv):
     logger.info(
         "Validating config file values and paths...")
 
-    config = yaml.load(args.configfile)
+    config = yaml.safe_load(args.configfile)
     config_schemafile = resource_filename("mars", "data/config.schema.yaml")
-    config_schema = yaml.load(open(config_schemafile))
+    config_schema = yaml.safe_load(open(config_schemafile))
 
     _missing = check_universal_requirements(config, config_schema)
     if _missing:
@@ -153,18 +153,9 @@ def Run(argv):
             logger.error("  Invalid value: {}: {}\n".format(e.key, e.reason))
         mars_error("Invalid rows in sample sheet")
         
-    logger.info("Resolving paths in config file...")
-    config = resolve_paths(config)
-
-    tmp_config_fp = ''
-    with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp_config:
-        yaml.dump(config, tmp_config)
-        tmp_config_fp = tmp_config.name
-    logger.info("Updated config file written to '{}'".format(tmp_config_fp))
-
     snakemake_args = [
         'snakemake', '--use-conda', '--snakefile', snakefile,
-        '--configfile', tmp_config_fp] + remaining
+        '--configfile', args.configfile.name] + remaining
     dotgraph = subprocess.run(snakemake_args + ["--rulegraph"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     _missing = []
     for target in detect_target_from_dotgraph(dotgraph.stdout.decode(), config_schema):

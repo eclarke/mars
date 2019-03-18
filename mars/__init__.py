@@ -149,7 +149,7 @@ def resolve_paths(config):
     return updated_config
 
 def create_config(**kwargs):
-    schema = yaml.load(
+    schema = yaml.safe_load(
         resource_stream("mars", "data/config.schema.yaml").read().decode())
     out =  "# MARS configuration file\n"
     out += "# Created with MARS v{}\n\n".format(__version__)
