@@ -5,6 +5,8 @@ from pkg_resources import resource_filename
 
 from mars import padded_barcodes
 
+localrules: assemble, assemble_all
+
 asm_working_dir = config['output_dir'] + '/assembling_temp/'
 asm_output_dir = config['output_dir'] + '/assemblies/'
 asm_report_dir = config['output_dir'] + '/reports/assembling/'
@@ -39,17 +41,21 @@ rule assemble_unicycler:
     input:
         rules.process.input.filtered
     output:
-        asm_output_dir + '{sample}/unicycler/assembly.fasta'
+        fasta = asm_output_dir + '{sample}/unicycler/assembly.fasta',
+        gfa = asm_output_dir + '{sample}/unicycler/assembly.gfa',
     threads:
         config.get('unicycler_threads', 8)
     params:
-        out_dir = asm_working_dir + '{sample}/unicycler'
+        out_dir = asm_working_dir + '{sample}/unicycler',
+        mode = config.get("unicycler_mode", "normal")
     conda:
         resource_filename("mars", "snakemake/envs/assembling.yaml")
     shell:
         """
-        unicycler -l {input} -o {params.out_dir} -t {threads} &&\
-        cp {params.out_dir}/assembly.fasta {output}
+        unicycler -l {input} -o {params.out_dir} -t {threads} \
+        --mode {params.mode} &&\
+        cp {params.out_dir}/assembly.fasta {output.fasta} &&\
+        cp {params.out_dir}/assembly.gfa {output.gfa}
         """
 
 rule assemble_rebaler:
@@ -84,6 +90,7 @@ rule assess_assembled_quast:
         -o {output} \
         -r {config[ref_genome_fp]} \
         -g {config[ref_genome_features_fp]} \
+        --glimmer \
         -t {threads}
         """
 
