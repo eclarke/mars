@@ -12,6 +12,7 @@ import mars
 snakemake.utils.min_version("5.2")
 
 samples = mars.parse_samples(config['samplesheet_fp'])
+config = mars.resolve_paths(config)
 
 rule list_workflows:
     message:
