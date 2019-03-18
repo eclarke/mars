@@ -9,7 +9,7 @@ pol_report_dir = config['output_dir'] + '/reports/polish/'
 rule align_reads:
     input:
         contigs = rules.assemble.input,
-        reads = rules.process.output
+        reads = rules.process.input.filtered
     output:
         pol_working_dir + '{sample}/{assembler}/sorted.bam'        
     params:
@@ -30,26 +30,27 @@ rule nanopolish_index:
     Builds the Nanopolish index from the fastq and fast5 files.
     '''
     input:
-        fastq = rules.process.output
+        fastq = rules.process.input.filtered
     output:
-        proc_output_dir + '{sample}.fastq.gz.index.readdb'
+        rules.process.input.filtered[0] + '.index.readdb'
+#        proc_output_dir + '{sample}.fastq.gz.index.readdb'
     params:
         fast5 = config.get('fast5_dir')
     conda:
-        resource_filename("mars", "snakemake/envs/assembling.yaml")
+        resource_filename("mars", "snakemake/envs/polishing.yaml")
     shell:
         "nanopolish index -d {params.fast5} {input.fastq}"
         
 rule nanopolish_variants:
     input:
         contigs = rules.assemble.input,
-        reads = rules.process.output,
+        reads = rules.process.input.filtered,
         bam = rules.align_reads.output,
         index = rules.nanopolish_index.output
     output:
         directory(pol_working_dir + '{sample}/{assembler}/nanopolish.workspace')
     conda:
-        resource_filename("mars", "snakemake/envs/assembling.yaml")
+        resource_filename("mars", "snakemake/envs/polishing.yaml")
     threads:
         config.get('nanopolish_threads', 8)
     shell:
@@ -72,7 +73,7 @@ rule nanopolish_vcf2fasta:
     output:
         pol_output_dir + '{sample}/{assembler}/polished_assembly.fasta'
     conda:
-        resource_filename("mars", "snakemake/envs/assembling.yaml")
+        resource_filename("mars", "snakemake/envs/polishing.yaml")
     shell:
         """
         nanopolish vcf2fasta -g {input.contigs} \
