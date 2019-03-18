@@ -17,6 +17,8 @@ setup(
     ]},
     install_requires=[
         'snakemake>5.1,<6',
-        'coloredlogs'
+        'coloredlogs',
+        'seamlessf5',
+        'pandas'
     ]
 )
