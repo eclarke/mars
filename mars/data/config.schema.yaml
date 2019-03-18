@@ -36,6 +36,14 @@ properties:
     description: "Threads to provide to Albacore"
     type: number
     minimum: 1
+  filt_min_length:
+    description: "Minimum read length to keep"
+    type: number
+    minimum: 0
+  filt_length_weight:
+    description: "Priority to give to length of read over quality"
+    type: number
+    minimum: 1  
   assembler:
     description: "Assembler(s) to use"
     type: array
@@ -57,6 +65,13 @@ properties:
     description: "Threads to provide to Unicycler"
     type: number
     minimum: 1
+  unicycler_mode:
+    description: "Assembly mode for Unicycler"
+    type: string
+    enum:
+      - conservative
+      - normal
+      - bold
   rebaler_threads:
     description: "Threads to provide to Rebaler"
     type: number
