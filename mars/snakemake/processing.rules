@@ -4,7 +4,7 @@
 
 from mars import padded_barcodes
 
-localrules: process, process_all
+localrules: process, process_all, gather_guppy_fastqs, gather_albacore_fastqs
 
 proc_working_dir = config['output_dir'] + '/processing_temp/'
 proc_output_dir = config['output_dir'] + '/fastqs/'
@@ -60,7 +60,7 @@ rule demux_guppy:
 rule gather_guppy_fastqs:
     '''Cats and gzips Guppy-demuxed fastq files.'''
     input:
-        directory(rules.basecall_guppy.params.out_dir+'/barcode{bc}')
+        rules.basecall_guppy.params.out_dir+'/barcode{bc}'
     output:
         proc_working_dir + 'guppy/barcode{bc}.fastq.gz'
     shell:
@@ -80,7 +80,7 @@ rule basecall_demux_albacore:
         out_dir = proc_working_dir + 'albacore'
     shell:
         """
-        read_fast5_basecaller.py \
+        sf5_read_fast5_basecaller.py \
         --input {params.fast5_dir} \
         --save_path {params.out_dir} \
         --flowcell {config[flowcell]} \
@@ -91,7 +91,7 @@ rule basecall_demux_albacore:
         --reads_per_fastq_batch 0 \
         --files_per_batch_folder 0 \
         --worker_threads {threads} && \
-        cp {params.out_dir}/sequencing_summary {output.summary}
+        cp {params.out_dir}/sequencing_summary.txt {output.summary}
         """
 
 rule gather_albacore_fastqs:
@@ -99,7 +99,7 @@ rule gather_albacore_fastqs:
     Moves Albacore fastq files to canonical directory.
     '''
     input:
-        directory(proc_working_dir + 'albacore/workspace/barcode{bc}')
+        proc_working_dir + 'albacore/workspace/barcode{bc}'
     output:
         proc_working_dir + 'albacore/untrimmed/barcode{bc}.fastq.gz'
     shell:
@@ -130,7 +130,6 @@ rule basecall:
         proc_output_dir + 'unfiltered/{sample}.fastq.gz'
     shell:
         """cat {input} > {output}"""
-
         
 rule quality_filter:
     input:
@@ -141,8 +140,14 @@ rule quality_filter:
         min_length = config.get("filt_min_length", 1000),
         length_weight = config.get("filt_length_weight", 10),
         split_bp = config.get("filt_split_bp", 1000),
+        keep_percent = (
+            ('--keep_percent ' + str(config.get("filt_keep_percent")))
+            if "filt_keep_percent" in config else ''),
+        target_bases = (
+            ('--target_bases ' + str(config.get("filt_target_bases")))
+            if "filt_target_bases" in config else ''),
         ref_genome_fp = (
-            '-a ' + config.get("ref_genome_fp") 
+            ('-a ' + config.get("ref_genome_fp"))
             if "ref_genome_fp" in config else '')
     conda:
         resource_filename("mars", "snakemake/envs/processing.yaml")        
@@ -154,6 +159,8 @@ rule quality_filter:
         --trim \
         --length_weight {params.length_weight} \
         --split {params.split_bp} \
+        {params.keep_percent} \
+        {params.target_bases} \
         {input} | gzip > {output}
         """
 
@@ -164,6 +171,6 @@ rule process:
         
 rule process_all:
     input:
-        expand(rules.process.output, sample=list(samples.sample_label)),
+        expand(rules.process.input, sample=list(samples.sample_label)),
         proc_report_dir + config.get('basecaller', '') + '/sequencing_summary.txt'
 
