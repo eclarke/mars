@@ -63,7 +63,7 @@ def Init(argv):
             "`key:value`. Overrides values from other config file if both "
             "present."))
     args = parser.parse_args(argv)
-    if Path(args.output).exists() and not args.force:
+    if args.output and Path(args.output).exists() and not args.force:
         mars_error("Chosen output file exists. Use --force to overwrite.")
     elif args.output:
         output = open(args.output, 'w')
@@ -155,7 +155,7 @@ def Run(argv):
         
     snakemake_args = [
         'snakemake', '--use-conda', '--snakefile', snakefile,
-        '--configfile', args.configfile.name] + remaining
+        '--configfile', args.configfile.name, '-p'] + remaining
     dotgraph = subprocess.run(snakemake_args + ["--rulegraph"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     _missing = []
     for target in detect_target_from_dotgraph(dotgraph.stdout.decode(), config_schema):
