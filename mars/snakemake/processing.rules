@@ -14,14 +14,16 @@ rule basecall_guppy:
     output:
         summary = proc_report_dir + 'guppy/sequencing_summary.txt'
     threads:
-        config.get('guppy_threads', 8)
+        config.get('basecaller_threads', 8)
     params:
         fast5_dir = config.get('fast5_dir'),
         flowcell = config.get('flowcell'),
         kit = config.get('kit'),
-        out_dir = proc_working_dir + 'guppy/workspace'
+        out_dir = proc_working_dir + 'guppy/workspace',
+        prefix_opt = config.get('guppy_prefix_opt', '')
     shell:
         """
+        {params.prefix_opt} \
         guppy_basecaller \
         --input_path {params.fast5_dir} \
         --save_path {params.out_dir} \
@@ -41,14 +43,16 @@ rule demux_guppy:
             bc = padded_barcodes(samples))),
         summary = proc_report_dir + 'guppy/barcoding_summary.txt'
     threads:
-        config.get('guppy_threads', 8)
+        config.get('basecaller_threads', 8)
     params:
         fastq_dir = rules.basecall_guppy.params.out_dir,
         config_opt = (
             '--config ' + config['guppy_barcoder_cfg_fp']
-            if config.get('guppy_barcoder_cfg_fp') else '')
+            if config.get('guppy_barcoder_cfg_fp') else ''),
+        prefix_opt = config.get('guppy_prefix_opt', '')
     shell:
         """
+        {params.prefix_opt} \
         guppy_barcoder \
         --input_path {params.fastq_dir} \
         --save_path {params.fastq_dir} \
@@ -74,7 +78,7 @@ rule basecall_demux_albacore:
             bc=padded_barcodes(samples))),
         summary = proc_report_dir + 'albacore/sequencing_summary.txt'
     threads:
-        config.get('albacore_threads', 8)
+        config.get('basecaller_threads', 8)
     params:
         fast5_dir = config.get('fast5_dir'),
         out_dir = proc_working_dir + 'albacore'
@@ -115,7 +119,7 @@ rule trim_adapters_albacore:
     output:
         proc_working_dir + 'albacore/barcode{bc}.fastq.gz'
     threads:
-        config.get('porechop_threads', 8)
+        config.get('basecaller_threads', 8)
     conda:
         resource_filename("mars", "snakemake/envs/processing.yaml")
     shell:
