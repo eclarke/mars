@@ -1,6 +1,9 @@
 $schema: "http://json-schema.org/draft-04/schema#"
 description: "Configuration file for MARS"
-properties: 
+properties:
+  project_name:
+    description: "Project name (for reports)"
+    type: string
   output_dir:
     description: "Path to output directory for MARS"
     type: string

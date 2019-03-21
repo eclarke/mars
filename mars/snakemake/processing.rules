@@ -9,6 +9,7 @@ localrules: process, process_all, gather_guppy_fastqs, gather_albacore_fastqs
 proc_working_dir = config['output_dir'] + '/processing_temp/'
 proc_output_dir = config['output_dir'] + '/fastqs/'
 proc_report_dir = config['output_dir'] + '/reports/processing/'
+barcodes = expand('barcode{bc}', bc=padded_barcodes(samples)) + ['unclassified']
 
 rule basecall_guppy:
     output:
@@ -39,8 +40,8 @@ rule demux_guppy:
         summary = rules.basecall_guppy.output.summary
     output:
         out_dir = directory(expand(
-            rules.basecall_guppy.params.out_dir + '/barcode{bc}',
-            bc = padded_barcodes(samples))),
+            rules.basecall_guppy.params.out_dir + '/{barcode}',
+            barcode = barcodes)),
         summary = proc_report_dir + 'guppy/barcoding_summary.txt'
     threads:
         config.get('basecaller_threads', 8)
@@ -64,9 +65,9 @@ rule demux_guppy:
 rule gather_guppy_fastqs:
     '''Cats and gzips Guppy-demuxed fastq files.'''
     input:
-        rules.basecall_guppy.params.out_dir+'/barcode{bc}'
+        rules.basecall_guppy.params.out_dir+'/{barcode}'
     output:
-        proc_working_dir + 'guppy/barcode{bc}.fastq.gz'
+        proc_working_dir + 'guppy/{barcode}.fastq.gz'
     shell:
         "cat {input}/*.fastq | gzip > {output}"
 
@@ -74,8 +75,8 @@ rule basecall_demux_albacore:
     '''Basecalls and demultiplexes fast5 files using Albacore.'''
     output:
         out_dir = directory(expand(
-            proc_working_dir + 'albacore/workspace/barcode{bc}',
-            bc=padded_barcodes(samples))),
+            proc_working_dir + 'albacore/workspace/{barcode}',
+            barcode=barcodes)),
         summary = proc_report_dir + 'albacore/sequencing_summary.txt'
     threads:
         config.get('basecaller_threads', 8)
@@ -103,9 +104,9 @@ rule gather_albacore_fastqs:
     Moves Albacore fastq files to canonical directory.
     '''
     input:
-        proc_working_dir + 'albacore/workspace/barcode{bc}'
+        proc_working_dir + 'albacore/workspace/{barcode}'
     output:
-        proc_working_dir + 'albacore/untrimmed/barcode{bc}.fastq.gz'
+        proc_working_dir + 'albacore/untrimmed/{barcode}.fastq.gz'
     shell:
         "cat {input}/*.fastq | gzip > {output}"
 
@@ -117,7 +118,7 @@ rule trim_adapters_albacore:
     input:
         rules.gather_albacore_fastqs.output
     output:
-        proc_working_dir + 'albacore/barcode{bc}.fastq.gz'
+        proc_working_dir + 'albacore/{barcode}.fastq.gz'
     threads:
         config.get('basecaller_threads', 8)
     conda:
@@ -128,8 +129,8 @@ rule trim_adapters_albacore:
 rule basecall:
     input:
         lambda wc: expand(
-            proc_working_dir + config.get('basecaller', '') + '/barcode{bc}.fastq.gz',
-            bc = padded_barcodes(samples.loc[samples['sample_label'] == wc.sample]))
+            proc_working_dir + config.get('basecaller', '') + '/{barcode}.fastq.gz',
+            barcode = padded_barcodes(samples.loc[samples['sample_label'] == wc.sample]))
     output:
         proc_output_dir + 'unfiltered/{sample}.fastq.gz'
     shell:
@@ -168,6 +169,47 @@ rule quality_filter:
         {input} | gzip > {output}
         """
 
+rule assess_run_nanoplot:
+    input:
+        proc_report_dir + '{basecaller}/sequencing_summary.txt'
+    output:
+        directory(proc_report_dir + '{basecaller}/nanoplot')
+    threads:
+        config.get('nanoplot_threads', 8)
+    conda:
+        resource_filename("mars", "snakemake/envs/processing.yaml")
+    shell:
+        """
+        NanoPlot --threads {threads} --summary {input} --outdir {output} --plots hex dot pauvre
+        """
+
+rule assess_run_nanocomp:
+    input:
+        expand(
+            proc_working_dir + '{{basecaller}}/{barcode}.fastq.gz',
+            barcode = barcodes)
+    output:
+        directory(proc_report_dir + '{basecaller}/nanocomp')
+    params:
+        names = expand('{barcode}', barcode=barcodes),
+        prefix_opt = (
+            '--prefix ' + config.get('project_name')
+            if 'project_name' in config
+            else '')
+    threads:
+        config.get('nanocomp_threads', 8)
+    conda:
+        resource_filename("mars", "snakemake/envs/processing.yaml")
+    shell:
+        """
+        NanoComp \
+        --fastq {input} \
+        --names {params.names} \
+        --threads {threads} \
+        {params.prefix_opt} \
+        --outdir {output} 
+        """
+        
 rule process:
     input:
         filtered=rules.quality_filter.output,
@@ -175,6 +217,8 @@ rule process:
         
 rule process_all:
     input:
-        expand(rules.process.input, sample=list(samples.sample_label)),
-        proc_report_dir + config.get('basecaller', '') + '/sequencing_summary.txt'
+        fastqs = expand(rules.process.input, sample=list(samples.sample_label)),
+        seq_summary = expand(proc_report_dir + '{basecaller}/sequencing_summary.txt', basecaller=config.get('basecaller')),
+        nanoplot_report = expand(rules.assess_run_nanoplot.output, basecaller=config.get('basecaller')),
+        nanocomp_report = expand(rules.assess_run_nanocomp.output, basecaller=config.get('basecaller')),
 
