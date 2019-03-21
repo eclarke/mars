@@ -130,7 +130,7 @@ rule basecall:
     input:
         lambda wc: expand(
             proc_working_dir + config.get('basecaller', '') + '/{barcode}.fastq.gz',
-            barcode = padded_barcodes(samples.loc[samples['sample_label'] == wc.sample]))
+            barcode = expand('barcode{bc}', bc=padded_barcodes(samples.loc[samples['sample_label'] == wc.sample])))
     output:
         proc_output_dir + 'unfiltered/{sample}.fastq.gz'
     shell:
