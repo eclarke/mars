@@ -55,6 +55,8 @@ properties:
         - canu
         - unicycler
         - rebaler
+        - flye
+        - wtdbg2
   assembler_threads:
     description: "Threads to provide to the assembler"
     type: number
@@ -70,14 +72,17 @@ properties:
       - conservative
       - normal
       - bold
+  flye_polish_iterations:
+    description: "Number of iteration rounds Flye will perform"
+    type: number
+    minimum: 0
   minimap2_threads:
     description: "Threads to provide to minimap2 during polishing"
     type: number
     minimum: 1
   ref_genome_size:
-    description: "Size of reference genome, in bases"
-    type: number
-    minimum: 1
+    description: "Size of reference genome. Formats like 5.5m or 3g are allowed"
+    type: string
   ref_genome_fp:
     description: "Path to reference genome in FASTA format"
     type: string
@@ -110,4 +115,8 @@ target_requirements:
 assembler_requirements:
   canu:
     - canu_max_mem
+    - ref_genome_size
+  wtdbg:
+    - ref_genome_size
+  flye:
     - ref_genome_size

@@ -1,6 +1,6 @@
-name: assembling
+name: rebaler
 channels:
   - bioconda
   - conda-forge
 dependencies:
-  - quast=5
+  - rebaler

@@ -1,6 +1,6 @@
-name: assembling
+name: canu
 channels:
   - bioconda
   - conda-forge
 dependencies:
-  - quast=5
+  - canu

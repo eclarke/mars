@@ -1,6 +1,6 @@
-name: assembling
+name: unicycler
 channels:
   - bioconda
   - conda-forge
 dependencies:
-  - quast=5
+  - unicycler=0.4

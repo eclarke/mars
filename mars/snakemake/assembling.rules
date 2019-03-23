@@ -25,7 +25,7 @@ rule assemble_canu:
     threads:
         config.get('assembler_threads', 4)
     conda:
-        resource_filename("mars", "snakemake/envs/assembling.yaml")
+        resource_filename("mars", "snakemake/envs/canu.yaml")
     shell:
         """
         canu -p canu -d {params.out_dir} \
@@ -49,7 +49,7 @@ rule assemble_unicycler:
         out_dir = asm_working_dir + '{sample}/unicycler',
         mode = config.get("unicycler_mode", "normal")
     conda:
-        resource_filename("mars", "snakemake/envs/assembling.yaml")
+        resource_filename("mars", "snakemake/envs/unicycler.yaml")
     shell:
         """
         unicycler -l {input} -o {params.out_dir} -t {threads} \
@@ -68,9 +68,67 @@ rule assemble_rebaler:
     params:
         reference = config.get('ref_genome_fp')
     conda:
-        resource_filename("mars", "snakemake/envs/assembling.yaml")
+        resource_filename("mars", "snakemake/envs/rebaler.yaml")
     shell:
         "rebaler -t {threads} {params.reference} {input.reads} > {output}"
+
+rule assemble_flye:
+    input:
+        rules.process.input.unfiltered
+    output:
+        assembly=asm_output_dir + '{sample}/flye/assembly.fasta',
+        graph=asm_output_dir + '{sample}/flye/assembly_graph.gfa',
+        contig_info=asm_output_dir + '{sample}/flye/assembly_info.txt'
+    params:
+        genome_size = config.get('ref_genome_size'),
+        out_dir = asm_output_dir + '{sample}/flye',
+        iterations = config.get('flye_polish_iterations', 1)
+    conda:
+        resource_filename("mars", "snakemake/envs/flye.yaml")
+    threads:
+        config.get("assembler_threads", 8)
+    shell:
+        """
+        flye \
+        --nano-raw {input} \
+        --genome-size {params.genome_size} \
+        --out-dir {params.out_dir} \
+        --threads {threads} \
+        --iterations {params.iterations}
+        """
+
+rule assemble_wtdbg2:
+    """
+    Does both the assembly and consensus step for wtdbg2.
+    As this assembler isn't available on Bioconda, it needs to be installed manually.
+    """
+    input:
+        rules.process.input.unfiltered
+    output:
+        asm_output_dir + '{sample}/wtdbg2/assembly.fasta'
+    message:
+        "wtdbg2 is not available on Conda- be sure to install into $PATH (instructions here: https://github.com/ruanjue/wtdbg2)"
+    params:
+        out_dir = asm_working_dir + '{sample}/wtdbg2',
+        genome_size = config.get('ref_genome_size'),
+        layout = 'wtdbg.ctg.lay.gz',
+        contigs = 'wtdbg.ctg.fa'
+    threads:
+        config.get("assembler_threads", 8)
+    shell:
+        """
+        mkdir -p {params.out_dir} && cd {params.out_dir} && \
+        wtdbg2 -x ont \
+        -i {input} \
+        -fo wtdbg \
+        -g {params.genome_size} \
+        -t {threads} && \
+        wtpoa-cns \
+        -i {params.layout} \
+        -t {threads} \
+        -fo {params.contigs} && \
+        cp {params.contigs} {output}
+        """
 
 rule assemble:
     input: asm_output_dir + '{sample}/{assembler}/assembly.fasta'
