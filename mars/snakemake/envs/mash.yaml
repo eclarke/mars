@@ -1,0 +1,6 @@
+name: mash
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - mash

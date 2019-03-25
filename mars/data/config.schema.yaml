@@ -45,7 +45,7 @@ properties:
   filt_length_weight:
     description: "Priority to give to length of read over quality"
     type: number
-    minimum: 1  
+    minimum: 1
   assembler:
     description: "Assembler(s) to use"
     type: array
@@ -76,23 +76,23 @@ properties:
     description: "Number of iteration rounds Flye will perform"
     type: number
     minimum: 0
-  minimap2_threads:
-    description: "Threads to provide to minimap2 during polishing"
+  ref_genomes_dir:
+    description: "Directory containing (only) one or more reference genome(s), in fasta format"
+    type: string
+    format: directory
+    must_exist: True
+  ref_genome_size:
+    description: "Approximate size of reference genome. Formats like 5.5m or 3g are allowed"
+    type: string
+  mash_k_size:
+    description: "Size of kmers to use to build reference genome sketch (larger improves specificity, smaller improves sensitivity)"
     type: number
     minimum: 1
-  ref_genome_size:
-    description: "Size of reference genome. Formats like 5.5m or 3g are allowed"
-    type: string
-  ref_genome_fp:
-    description: "Path to reference genome in FASTA format"
-    type: string
-    format: file
-    must_exist: True
-  ref_genome_features_fp:
-    description: "Path to reference genome features file"
-    type: string
-    format: file
-    must_exist: True
+    maximum: 32
+  polisher_threads:
+    description: "Threads to provide to polishing steps"
+    type: number
+    minimum: 1
 required:
   - output_dir
   - samplesheet_fp
@@ -104,14 +104,12 @@ target_requirements:
     - kit
   assemble:
     - assembler
-    - ref_genome_fp
-    - ref_genome_features_fp
+    - ref_genomes_dir
   polish:
     - basecaller
     - assembler
     - fast5_dir
-    - ref_genome_fp
-    - ref_genome_features_fp
+    - ref_genomes_dir
 assembler_requirements:
   canu:
     - canu_max_mem
