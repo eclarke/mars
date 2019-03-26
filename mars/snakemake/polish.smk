@@ -1,10 +1,12 @@
-#=====================================================#
-# MARS/polish: Genome Assembly Polishing Workflow     #
-#=====================================================#
+#
+# MARS Assembly Polishing Workflow
+# ----------------------------------------------------------------------
+#
+# Polishes an assembly and re-assesses the polished assembly quality.
 
-pol_working_dir = config['output_dir'] + '/intermediate/polish/'
-pol_output_dir = config['output_dir'] + '/polished/'
-pol_report_dir = config['output_dir'] + '/reports/polish/'
+pol_output_dir = output_dir + 'polish/'
+pol_working_dir = working_dir + 'polish/'
+pol_report_dir = report_dir + 'polish/'
 
 rule align_reads:
     input:
@@ -25,15 +27,15 @@ rule align_reads:
         samtools index {output}
         """
 
-rule nanopolish_index:
+rule index_nanopolish:
     '''
     Builds the Nanopolish index from the fastq and fast5 files.
     '''
     input:
-        fastq = rules.process.input.filtered
+        fastq = rules.process.input.filtered,
+        summary = rules.basecall_guppy.params.out_dir + 'sequencing_summary.txt'
     output:
         rules.process.input.filtered[0] + '.index.readdb'
-#        proc_output_dir + '{sample}.fastq.gz.index.readdb'
     params:
         fast5 = config.get('fast5_dir')
     conda:
@@ -46,7 +48,7 @@ rule nanopolish_variants:
         contigs = rules.assemble.input,
         reads = rules.process.input.filtered,
         bam = rules.align_reads.output,
-        index = rules.nanopolish_index.output
+        index = rules.index_nanopolish.output
     output:
         directory(pol_working_dir + '{sample}/{assembler}/nanopolish.workspace')
     conda:
@@ -84,7 +86,7 @@ rule assess_polished_quast:
     input:
         rules.nanopolish_vcf2fasta.output
     output:
-        directory(pol_report_dir + '{sample}/{assembler}/quast')
+        directory(pol_reports_dir + '{sample}/{assembler}/quast')
     conda:
         resource_filename("mars", "snakemake/envs/assembling.yaml")
     threads:

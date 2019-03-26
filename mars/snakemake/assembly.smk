@@ -8,13 +8,14 @@ from mars import padded_barcodes
 
 localrules: assemble, assemble_all
 
-asm_working_dir = config['output_dir'] + '/assembling_temp/'
-asm_output_dir = config['output_dir'] + '/assemblies/'
-asm_report_dir = config['output_dir'] + '/reports/assembling/'
+asm_output_dir = output_dir + 'assemble/'
+asm_working_dir = working_dir + 'assemble/'
+asm_reports_dir = reports_dir + 'assemble/'
 
 rule create_ref_sketch:
+    '''Creates a mash sketch of all provided reference genomes.'''
     output:
-        config['output_dir'] + 'reference_genomes.msh'
+        asm_working_dir + 'reference_genomes.msh'
     params:
         k = config.get('mash_k_size', 32),
         ref_dir = config.get('ref_genome_dir')
@@ -34,7 +35,7 @@ rule calc_ref_dist_mash:
         sketch = rules.create_ref_sketch.output,
         reads = rules.process.input.filtered
     output:
-        asm_report_dir + 'mash/{sample}_distances.tsv'
+        asm_reports_dir + '{sample}/mash_distance_to_ref_genomes.tsv'
     threads:
         config.get('mash_threads', 1)
     conda:
@@ -53,7 +54,7 @@ checkpoint mark_ref_genome:
     input:
         rules.calc_ref_dist_mash.output
     output:
-        directory(asm_working_dir + 'ref_genomes/{sample}')
+        directory(asm_working_dir + '{sample}/ref_genome')
     shell:
         """
         mkdir -p {output} &&
@@ -73,8 +74,8 @@ rule assemble_canu:
     output:
         asm_output_dir + '{sample}/canu/assembly.fasta'
     params:
-        contigs = asm_working_dir + '/contigs/{sample}/canu/canu.contigs.fasta',
-        out_dir = asm_working_dir + '/contigs/{sample}/canu',
+        contigs = asm_working_dir + '{sample}/canu/canu.contigs.fasta',
+        out_dir = asm_working_dir + '{sample}/canu',
         genome_size = config.get('ref_genome_size', 0)
     resources:
         mem_mb = config.get('canu_max_mem', 0)
@@ -131,9 +132,9 @@ rule assemble_flye:
     input:
         rules.process.input.unfiltered
     output:
-        assembly=asm_output_dir + '{sample}/flye/assembly.fasta',
-        graph=asm_output_dir + '{sample}/flye/assembly_graph.gfa',
-        contig_info=asm_output_dir + '{sample}/flye/assembly_info.txt'
+        assembly = asm_output_dir + '{sample}/flye/assembly.fasta',
+        graph = asm_output_dir + '{sample}/flye/assembly_graph.gfa',
+        contig_info = asm_reports_dir + '{sample}/flye/assembly_info.txt'
     params:
         genome_size = config.get('ref_genome_size'),
         out_dir = asm_output_dir + '{sample}/flye',
@@ -193,9 +194,9 @@ rule assess_assembled_quast:
         reference=ref_genome,
         assembly=rules.assemble.input
     output:
-        directory(asm_report_dir + '{sample}/{assembler}/quast')
+        directory(asm_reports_dir + '{sample}/{assembler}/quast')
     conda:
-        resource_filename("mars", "snakemake/envs/assembling.yaml")
+        resource_filename("mars", "snakemake/envs/quast.yaml")
     threads:
         config.get("assembler_threads", 8)    
     shell:

@@ -1,36 +1,34 @@
-#=================================================#
-# MARS: MinION Assembly and Reporting System      #
-# https://github.com/eclarke/mars                 #
-#=================================================#
+#
+# MARS: Minion Assembly and Reporting System
+# ----------------------------------------------------------------------
+#
+# This is the head file that imports the actual workflows. It also
+# loads the samplesheet and resolves all paths in the config file.
 
-import sys
 from pkg_resources import resource_filename
 
 import snakemake.utils
 import mars
 
-snakemake.utils.min_version("5.2")
+snakemake.utils.min_version("5.4")
 
 samples = mars.parse_samples(config['samplesheet_fp'])
 config = mars.resolve_paths(config)
+
+output_dir = config['output_dir'] + '/'
+working_dir = output_dir + 'workspace/'
+reports_dir = output_dir + 'reports/'
 
 rule list_workflows:
     message:
         (
             "\nAvailable workflows:\n"
-            " - process_all: basecall, demultiplex and adapter-trim reads using one of the basecallers\n"
-            " - assemble_all: assemble all samples using one of the assemblers\n"
-            " - polish_all: polish all assemblies using Nanopolish\n"
-            "Available basecallers:\n"
-            " - guppy\n"
-            " - albacore\n"
-            "Available assemblers:\n"
-            " - canu (de novo)\n"
-            " - unicycler (de novo)\n"
-            " - rebaler (reference)\n\n"
+            " - process_all: basecall, demultiplex and filter reads, and assess run stats\n"
+            " - assemble_all: assemble contigs from each sample and assess assembly quality\n"
+            " - polish_all: polish all assemblies and assess polished assembly quality\n"
             "Run a workflow with `mars run <configfile> <workflow>`"
         )
 
-include: resource_filename("mars", "snakemake/processing.rules")
-include: resource_filename("mars", "snakemake/assembling.rules")
-include: resource_filename("mars", "snakemake/polishing.rules")
+include: resource_filename("mars", "snakemake/processing.smk")
+include: resource_filename("mars", "snakemake/assembling.smk")
+include: resource_filename("mars", "snakemake/polishing.smk")

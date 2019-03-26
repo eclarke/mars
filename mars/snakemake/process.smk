@@ -1,14 +1,18 @@
-#====================================================#
-# MARS/process: MARS Processing/Reporting Workflow   #
-#====================================================#
+#
+# MARS Pre-processing Workflow
+# ----------------------------------------------------------------------
+#
+# Basecalls, demultiplexes and filters .fast5 files, and produces
+# summary reports at both the run and barcode level.
 
 from mars import padded_barcodes
 
 localrules: process, process_all, gather_guppy_fastqs, gather_albacore_fastqs
 
-proc_working_dir = config['output_dir'] + '/processing_temp/'
-proc_output_dir = config['output_dir'] + '/fastqs/'
-proc_report_dir = config['output_dir'] + '/reports/processing/'
+proc_output_dir = output_dir + 'process/'
+proc_working_dir = working_dir + 'process/'
+proc_reports_dir = reports_dir + 'process/'
+
 barcodes = expand('barcode{bc}', bc=padded_barcodes(samples)) + ['unclassified']
 
 rule basecall_guppy:
