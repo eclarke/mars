@@ -33,15 +33,18 @@ rule index_nanopolish:
     '''
     input:
         fastq = rules.process.input.filtered,
-        summary = rules.basecall_guppy.params.out_dir + 'sequencing_summary.txt'
+        summary = proc_report_dir + '{basecaller}/sequencing_summary.txt'
     output:
         rules.process.input.filtered[0] + '.index.readdb'
     params:
-        fast5 = config.get('fast5_dir')
+        fast5 = config.get('fast5_dir'),
+        nanopolish_path = config.get('nanopolish_path', 'nanopolish')
+    message:
+        "Be sure you're running a version of Nanopolish built from the repo, not Conda (e.g. > v0.11.0)"
     conda:
         resource_filename("mars", "snakemake/envs/polishing.yaml")
     shell:
-        "nanopolish index -d {params.fast5} {input.fastq}"
+        "{params.nanopolish_path} index -d {params.fast5} -s {input.summary} {input.fastq}"
         
 rule nanopolish_variants:
     input:
