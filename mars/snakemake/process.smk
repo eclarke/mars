@@ -17,7 +17,7 @@ barcodes = expand('barcode{bc}', bc=padded_barcodes(samples)) + ['unclassified']
 
 rule basecall_guppy:
     output:
-        summary = proc_report_dir + 'guppy/sequencing_summary.txt'
+        summary = proc_reports_dir + 'guppy/sequencing_summary.txt'
     threads:
         config.get('basecaller_threads', 8)
     params:
@@ -46,7 +46,7 @@ rule demux_guppy:
         out_dir = directory(expand(
             rules.basecall_guppy.params.out_dir + '/{barcode}',
             barcode = barcodes)),
-        summary = proc_report_dir + 'guppy/barcoding_summary.txt'
+        summary = proc_reports_dir + 'guppy/barcoding_summary.txt'
     threads:
         config.get('basecaller_threads', 8)
     params:
@@ -81,7 +81,7 @@ rule basecall_demux_albacore:
         out_dir = directory(expand(
             proc_working_dir + 'albacore/workspace/{barcode}',
             barcode=barcodes)),
-        summary = proc_report_dir + 'albacore/sequencing_summary.txt'
+        summary = proc_reports_dir + 'albacore/sequencing_summary.txt'
     threads:
         config.get('basecaller_threads', 8)
     params:
@@ -147,27 +147,18 @@ rule quality_filter:
         proc_output_dir + 'filtered/{sample}.fastq.gz'
     params:
         min_length = config.get("filt_min_length", 1000),
-        length_weight = config.get("filt_length_weight", 10),
-        split_bp = config.get("filt_split_bp", 1000),
         keep_percent = (
             ('--keep_percent ' + str(config.get("filt_keep_percent")))
             if "filt_keep_percent" in config else ''),
         target_bases = (
             ('--target_bases ' + str(config.get("filt_target_bases")))
             if "filt_target_bases" in config else ''),
-        ref_genome_fp = (
-            ('-a ' + config.get("ref_genome_fp"))
-            if "ref_genome_fp" in config else '')
     conda:
         resource_filename("mars", "snakemake/envs/processing.yaml")        
     shell:
         """
         filtlong \
-        {params.ref_genome_fp} \
         --min_length {params.min_length} \
-        --trim \
-        --length_weight {params.length_weight} \
-        --split {params.split_bp} \
         {params.keep_percent} \
         {params.target_bases} \
         {input} | gzip > {output}
@@ -175,9 +166,9 @@ rule quality_filter:
 
 rule assess_run_nanoplot:
     input:
-        proc_report_dir + '{basecaller}/sequencing_summary.txt'
+        proc_reports_dir + '{basecaller}/sequencing_summary.txt'
     output:
-        directory(proc_report_dir + '{basecaller}/nanoplot')
+        directory(proc_reports_dir + '{basecaller}/nanoplot')
     threads:
         config.get('nanoplot_threads', 8)
     conda:
@@ -193,7 +184,7 @@ rule assess_run_nanocomp:
             proc_working_dir + '{{basecaller}}/{barcode}.fastq.gz',
             barcode = barcodes)
     output:
-        directory(proc_report_dir + '{basecaller}/nanocomp')
+        directory(proc_reports_dir + '{basecaller}/nanocomp')
     params:
         names = expand('{barcode}', barcode=barcodes),
         prefix_opt = (
@@ -222,7 +213,7 @@ rule process:
 rule process_all:
     input:
         fastqs = expand(rules.process.input, sample=list(samples.sample_label)),
-        seq_summary = expand(proc_report_dir + '{basecaller}/sequencing_summary.txt', basecaller=config.get('basecaller')),
+        seq_summary = expand(proc_reports_dir + '{basecaller}/sequencing_summary.txt', basecaller=config.get('basecaller')),
         nanoplot_report = expand(rules.assess_run_nanoplot.output, basecaller=config.get('basecaller')),
         nanocomp_report = expand(rules.assess_run_nanocomp.output, basecaller=config.get('basecaller')),
 

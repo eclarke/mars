@@ -42,8 +42,13 @@ properties:
     description: "Minimum read length to keep"
     type: number
     minimum: 0
-  filt_length_weight:
-    description: "Priority to give to length of read over quality"
+  filt_keep_percent:
+    description: "Percent of bp to keep"
+    type: number
+    minimum: 0
+    maximum: 100
+  filt_target_bases:
+    description: "Keep up to this many bp"
     type: number
     minimum: 1
   assembler:
