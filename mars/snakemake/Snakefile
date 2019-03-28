@@ -29,6 +29,6 @@ rule list_workflows:
             "Run a workflow with `mars run <configfile> <workflow>`"
         )
 
-include: resource_filename("mars", "snakemake/processing.smk")
-include: resource_filename("mars", "snakemake/assembling.smk")
-include: resource_filename("mars", "snakemake/polishing.smk")
+include: resource_filename("mars", "snakemake/process.smk")
+include: resource_filename("mars", "snakemake/assemble.smk")
+include: resource_filename("mars", "snakemake/polish.smk")
