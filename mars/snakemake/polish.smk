@@ -6,7 +6,7 @@
 
 pol_output_dir = output_dir + 'polish/'
 pol_working_dir = working_dir + 'polish/'
-pol_report_dir = report_dir + 'polish/'
+pol_reports_dir = reports_dir + 'polish/'
 
 rule align_reads:
     input:
@@ -19,7 +19,7 @@ rule align_reads:
     threads:
         config.get('minimap2_threads', 8)
     conda:
-        resource_filename("mars", "snakemake/envs/assembling.yaml")
+        resource_filename("mars", "snakemake/envs/nanopolish.yaml")
     shell:
         """
         minimap2 -ax map-ont -t {threads} {input.contigs} {input.reads} |\
@@ -33,18 +33,17 @@ rule index_nanopolish:
     '''
     input:
         fastq = rules.process.input.filtered,
-        summary = proc_report_dir + '{basecaller}/sequencing_summary.txt'
+        summary = expand(
+            proc_reports_dir + '{basecaller}/sequencing_summary.txt',
+            basecaller=config.get('basecaller'))
     output:
         rules.process.input.filtered[0] + '.index.readdb'
     params:
-        fast5 = config.get('fast5_dir'),
-        nanopolish_path = config.get('nanopolish_path', 'nanopolish')
-    message:
-        "Be sure you're running a version of Nanopolish built from the repo, not Conda (e.g. > v0.11.0)"
+        fast5 = config.get('fast5_dir')
     conda:
-        resource_filename("mars", "snakemake/envs/polishing.yaml")
+        resource_filename("mars", "snakemake/envs/nanopolish.yaml")
     shell:
-        "{params.nanopolish_path} index -d {params.fast5} -s {input.summary} {input.fastq}"
+        "nanopolish index -d {params.fast5} -s {input.summary} {input.fastq}"
         
 rule nanopolish_variants:
     input:
@@ -53,18 +52,18 @@ rule nanopolish_variants:
         bam = rules.align_reads.output,
         index = rules.index_nanopolish.output
     output:
-        directory(pol_working_dir + '{sample}/{assembler}/nanopolish.workspace')
+        directory(pol_working_dir + '{sample}/{assembler}/nanopolish/workspace')
     conda:
-        resource_filename("mars", "snakemake/envs/polishing.yaml")
+        resource_filename("mars", "snakemake/envs/nanopolish.yaml")
     threads:
-        config.get('nanopolish_threads', 8)
+        config.get('polisher_threads', 8)
     shell:
         """
-        python $CONDA_PREFIX/bin/nanopolish_makerange.py {input.contigs} |\
+        nanopolish_makerange.py {input.contigs} |\
         parallel --results {output} -P {threads} \
         nanopolish variants \
         --consensus \
-        --outfile {output}/polished.{{1}}.vcf \
+        --outfile polished.{{1}}.vcf \
         --window {{1}} \
         --reads {input.reads} \
         --bam {input.bam} \
@@ -76,44 +75,60 @@ rule nanopolish_vcf2fasta:
         contigs = rules.assemble.input,
         variants = rules.nanopolish_variants.output
     output:
-        pol_output_dir + '{sample}/{assembler}/polished_assembly.fasta'
+        pol_output_dir + '{sample}/{assembler}/nanopolish/polished_assembly.fasta'
     conda:
-        resource_filename("mars", "snakemake/envs/polishing.yaml")
+        resource_filename("mars", "snakemake/envs/nanopolish.yaml")
     shell:
         """
         nanopolish vcf2fasta -g {input.contigs} \
         {input.variants}/polished.*.vcf > {output}
         """
 
+rule polish_medaka:
+    input:
+        contigs = rules.assemble.input,
+        reads = rules.process.input.unfiltered,
+    output:
+        pol_output_dir + '{sample}/{assembler}/medaka/polished_assembly.fasta'
+    threads:
+        config.get('polisher_threads', 8)
+    conda:
+        resource_filename("mars", "snakemake/envs/medaka.yaml")
+    shell:
+        "medaka consensus -i {input.reads} -d {input.contigs} -o {output} -t {threads}"
+
+rule polish:
+    input:
+        pol_output_dir + '{sample}/{assembler}/{polisher}/polished_assembly.fasta'
+
+        
 rule assess_polished_quast:
     input:
-        rules.nanopolish_vcf2fasta.output
+        reference=ref_genome,
+        assembly=rules.polish.input
     output:
-        directory(pol_reports_dir + '{sample}/{assembler}/quast')
+        directory(pol_reports_dir + '{sample}/{assembler}/{polisher}/quast')
     conda:
-        resource_filename("mars", "snakemake/envs/assembling.yaml")
+        resource_filename("mars", "snakemake/envs/quast.yaml")
     threads:
         config.get("quast_threads", 8)    
     shell:
         """
         quast {input} \
         -o {output} \
-        -r {config[ref_genome_fp]} \
-        -g {config[ref_genome_features_fp]} \
+        -r {input.reference} \
         -t {threads}
         """
-    
-rule polish:
-    input:
-        rules.nanopolish_vcf2fasta.output
 
 rule polish_all:
     input:
         assemblies = expand(
             rules.polish.input,
-            assembler=config.get('assembler', ''),
+            assembler=config.get('assembler'),
+            polisher=config.get('polisher'),
             sample=list(samples.sample_label)),
         reports = expand(
-            rules.assess_assembled_quast.output,
-            assembler=config.get('assembler', ''),
+            rules.assess_polished_quast.output,
+            assembler=config.get('assembler'),
+            polisher=config.get('polisher'),
             sample=list(samples.sample_label))

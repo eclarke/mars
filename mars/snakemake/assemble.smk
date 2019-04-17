@@ -3,6 +3,7 @@
 #=====================================================#
 
 from pkg_resources import resource_filename
+from pathlib import Path
 
 from mars import padded_barcodes
 
@@ -18,9 +19,11 @@ rule create_ref_sketch:
         asm_working_dir + 'reference_genomes.msh'
     params:
         k = config.get('mash_k_size', 32),
-        ref_dir = config.get('ref_genome_dir')
+        ref_dir = config.get('ref_genomes_dir')
     threads:
-        config.get('mash_threads', 8)    
+        config.get('mash_threads', 8)
+    conda:
+        resource_filename("mars", "snakemake/envs/mash.yaml")
     shell:        
         """
         mash sketch -k {params.k} -p {threads} -o {output} {params.ref_dir}/*
@@ -150,40 +153,8 @@ rule assemble_flye:
         --genome-size {params.genome_size} \
         --out-dir {params.out_dir} \
         --threads {threads} \
-        --iterations {params.iterations}
-        """
-
-rule assemble_wtdbg2:
-    """
-    Does both the assembly and consensus step for wtdbg2.
-    As this assembler isn't available on Bioconda, it needs to be installed manually.
-    """
-    input:
-        rules.process.input.unfiltered
-    output:
-        asm_output_dir + '{sample}/wtdbg2/assembly.fasta'
-    message:
-        "wtdbg2 is not available on Conda- be sure to install into $PATH (instructions here: https://github.com/ruanjue/wtdbg2)"
-    params:
-        out_dir = asm_working_dir + '{sample}/wtdbg2',
-        genome_size = config.get('ref_genome_size'),
-        layout = 'wtdbg.ctg.lay.gz',
-        contigs = 'wtdbg.ctg.fa'
-    threads:
-        config.get("assembler_threads", 8)
-    shell:
-        """
-        mkdir -p {params.out_dir} && cd {params.out_dir} && \
-        wtdbg2 -x ont \
-        -i {input} \
-        -fo wtdbg \
-        -g {params.genome_size} \
-        -t {threads} && \
-        wtpoa-cns \
-        -i {params.layout} \
-        -t {threads} \
-        -fo {params.contigs} && \
-        cp {params.contigs} {output}
+        --iterations {params.iterations} &&
+        cp {params.out_dir}/assembly_info.txt {output.contig_info}
         """
 
 rule assemble:

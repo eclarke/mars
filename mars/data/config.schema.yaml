@@ -61,7 +61,6 @@ properties:
         - unicycler
         - rebaler
         - flye
-        - wtdbg2
   assembler_threads:
     description: "Threads to provide to the assembler"
     type: number
@@ -81,6 +80,9 @@ properties:
     description: "Number of iteration rounds Flye will perform"
     type: number
     minimum: 0
+  ref_genomes_are_circular:
+    description: "Treat all the reference genomes as circular (only a good idea if not including draft genomes)"
+    type: boolean
   ref_genomes_dir:
     description: "Directory containing (only) one or more reference genome(s), in fasta format"
     type: string
@@ -94,11 +96,14 @@ properties:
     type: number
     minimum: 1
     maximum: 32
-  nanopolish_fp:
-    description: "Alternate path to nanopolish if not on $PATH, or a specific executable is required"
-    type: string
-    format: filepath
-    must_exist: True
+  polisher:
+    description: "Polisher(s) to use"
+    type: array
+    items:
+      type: string
+      enum:
+        - nanopolish
+        - medaka
   polisher_threads:
     description: "Threads to provide to polisher"
     type: number
@@ -118,13 +123,12 @@ target_requirements:
   polish:
     - basecaller
     - assembler
+    - polisher
     - fast5_dir
     - ref_genomes_dir
 assembler_requirements:
   canu:
     - canu_max_mem
-    - ref_genome_size
-  wtdbg:
     - ref_genome_size
   flye:
     - ref_genome_size

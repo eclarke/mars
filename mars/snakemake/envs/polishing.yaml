@@ -1,9 +1,0 @@
-name: polishing
-channels:
-  - bioconda
-  - conda-forge
-dependencies:
-  - nanopolish=0.11.0
-  - minimap2=2.13
-  - samtools=1.9
-  - parallel=20180922
