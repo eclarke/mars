@@ -1,4 +1,4 @@
-name: polishing
+name: nanopolish
 channels:
   - bioconda
   - conda-forge
