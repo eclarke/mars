@@ -133,7 +133,8 @@ rule assemble_rebaler:
 
 rule assemble_flye:
     input:
-        rules.process.input.unfiltered
+        reference = ref_genome,
+        reads = rules.process.input.unfiltered
     output:
         assembly = asm_output_dir + '{sample}/flye/assembly.fasta',
         graph = asm_output_dir + '{sample}/flye/assembly_graph.gfa',
@@ -148,9 +149,10 @@ rule assemble_flye:
         config.get("assembler_threads", 8)
     shell:
         """
+        GENOME_SIZE=$(wc -c {input.reference} | cut -f1 -d' ') &&
         flye \
-        --nano-raw {input} \
-        --genome-size {params.genome_size} \
+        --nano-raw {input.reads} \
+        --genome-size $GENOME_SIZE \
         --out-dir {params.out_dir} \
         --threads {threads} \
         --iterations {params.iterations} &&
