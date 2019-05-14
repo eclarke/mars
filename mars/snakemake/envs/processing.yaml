@@ -3,7 +3,8 @@ channels:
   - bioconda
   - conda-forge
 dependencies:
-  - porechop
-  - filtlong
-  - nanoplot
-  - nanocomp
+  - porechop=0.2.3_seqan2.1.1
+  - filtlong=0.2.0
+  - nanoplot=1.24.0
+  - nanocomp=1.1.0
+  - nanoplotter=1.2.1
