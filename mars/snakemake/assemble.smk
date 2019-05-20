@@ -155,6 +155,8 @@ rule assemble_flye:
         --genome-size $GENOME_SIZE \
         --out-dir {params.out_dir} \
         --threads {threads} \
+        --plasmid \
+        --meta \
         --iterations {params.iterations} &&
         cp {params.out_dir}/assembly_info.txt {output.contig_info}
         """
