@@ -16,7 +16,7 @@ samples = mars.parse_samples(config['samplesheet_fp'])
 config = mars.resolve_paths(config)
 
 output_dir = config['output_dir'] + '/'
-working_dir = output_dir + 'workspace/'
+working_dir = output_dir + '.mars_workspace/'
 reports_dir = output_dir + 'reports/'
 
 rule list_workflows:
@@ -25,10 +25,10 @@ rule list_workflows:
             "\nAvailable workflows:\n"
             " - process_all: basecall, demultiplex and filter reads, and assess run stats\n"
             " - assemble_all: assemble contigs from each sample and assess assembly quality\n"
-            " - polish_all: polish all assemblies and assess polished assembly quality\n"
+            "\nUtility workflows:\n"
+            " - force_assembly_reassessment: remove reference genome distances and assembly quality reports to force re-evaluation"
             "Run a workflow with `mars run <configfile> <workflow>`"
         )
 
 include: resource_filename("mars", "snakemake/process.smk")
 include: resource_filename("mars", "snakemake/assemble.smk")
-include: resource_filename("mars", "snakemake/polish.smk")

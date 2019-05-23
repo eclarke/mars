@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-04/schema#"
-description: "An entry in the sample sheet"
+description: "An entry in a MARS sample sheet"
 properties:
   barcode:
     description: "Sequencing kit barcode number, 1-12"

@@ -9,6 +9,7 @@ properties:
     type: string
     format: directory
     must_exist: False
+    default: "mars_output"
   samplesheet_fp:
     description: "Path to samplesheet, in tab-delimited format"
     type: string
@@ -19,24 +20,18 @@ properties:
     type: string
     format: directory
     must_exist: True
-  basecaller:
-    description: "ONT basecaller to use"
-    type: string
-    enum:
-      - guppy
-      - albacore
-  basecaller_threads:
-    description: "Threads to provide to the basecaller"
+  process_threads:
+    description: "Threads to provide to the process workflow"
     type: number
     minimum: 1
+  guppy_prefix_opt:
+    description: "Shell commands to execute prior to guppy commands (i.e. to load a module on a cluster). Consider ending with && or ;."
+    type: string
   flowcell:
     description: "Nanopore flow cell"
     type: string
   kit:
     description: "Nanopore library kit"
-    type: string
-  guppy_prefix_opt:
-    description: "Shell commands to execute prior to guppy commands (i.e. to load a module on a cluster). Consider ending with && or ;."
     type: string
   filt_min_length:
     description: "Minimum read length to keep"
@@ -57,78 +52,34 @@ properties:
     items:
       type: string
       enum:
-        - canu
-        - unicycler
         - rebaler
         - flye
   assembler_threads:
     description: "Threads to provide to the assembler"
     type: number
     minimum: 1
-  canu_max_mem:
-    description: "Memory to allocate to Canu, in megabytes"
-    type: number
-    minimum: 1
-  unicycler_mode:
-    description: "Assembly mode for Unicycler"
-    type: string
-    enum:
-      - conservative
-      - normal
-      - bold
   flye_polish_iterations:
     description: "Number of iteration rounds Flye will perform"
     type: number
     minimum: 0
-  ref_genomes_are_circular:
-    description: "Treat all the reference genomes as circular (only a good idea if not including draft genomes)"
-    type: boolean
   ref_genomes_dir:
     description: "Directory containing (only) one or more reference genome(s), in fasta format"
     type: string
     format: directory
     must_exist: True
-  ref_genome_size:
-    description: "Approximate size of reference genome. Formats like 5.5m or 3g are allowed"
-    type: string
   mash_k_size:
     description: "Size of kmers to use to build reference genome sketch (larger improves specificity, smaller improves sensitivity)"
     type: number
     minimum: 1
     maximum: 32
-  polisher:
-    description: "Polisher(s) to use"
-    type: array
-    items:
-      type: string
-      enum:
-        - nanopolish
-        - medaka
-  polisher_threads:
-    description: "Threads to provide to polisher"
-    type: number
-    minimum: 1
 required:
   - output_dir
   - samplesheet_fp
 target_requirements:
   process:
-    - basecaller
     - fast5_dir
     - flowcell
     - kit
   assemble:
     - assembler
     - ref_genomes_dir
-  polish:
-    - basecaller
-    - assembler
-    - polisher
-    - fast5_dir
-    - ref_genomes_dir
-assembler_requirements:
-  canu:
-    - canu_max_mem
-    - ref_genome_size
-  flye:
-    - ref_genome_size

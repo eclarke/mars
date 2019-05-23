@@ -19,7 +19,7 @@ rule basecall_guppy:
     output:
         summary = proc_reports_dir + 'guppy/sequencing_summary.txt'
     threads:
-        config.get('basecaller_threads', 8)
+        config.get('process_threads', 8)
     params:
         fast5_dir = config.get('fast5_dir'),
         flowcell = config.get('flowcell'),
@@ -75,65 +75,10 @@ rule gather_guppy_fastqs:
     shell:
         "cat {input}/*.fastq | gzip > {output}"
 
-rule basecall_demux_albacore:
-    '''Basecalls and demultiplexes fast5 files using Albacore.'''
-    output:
-        out_dir = directory(expand(
-            proc_working_dir + 'albacore/workspace/{barcode}',
-            barcode=barcodes)),
-        summary = proc_reports_dir + 'albacore/sequencing_summary.txt'
-    threads:
-        config.get('basecaller_threads', 8)
-    params:
-        fast5_dir = config.get('fast5_dir'),
-        out_dir = proc_working_dir + 'albacore'
-    shell:
-        """
-        sf5_read_fast5_basecaller.py \
-        --input {params.fast5_dir} \
-        --save_path {params.out_dir} \
-        --flowcell {config[flowcell]} \
-        --kit {config[kit]} \
-        --output_format fastq \
-        --recursive \
-        --disable_filtering \
-        --reads_per_fastq_batch 0 \
-        --files_per_batch_folder 0 \
-        --worker_threads {threads} && \
-        cp {params.out_dir}/sequencing_summary.txt {output.summary}
-        """
-
-rule gather_albacore_fastqs:
-    '''
-    Moves Albacore fastq files to canonical directory.
-    '''
-    input:
-        proc_working_dir + 'albacore/workspace/{barcode}'
-    output:
-        proc_working_dir + 'albacore/untrimmed/{barcode}.fastq.gz'
-    shell:
-        "cat {input}/*.fastq | gzip > {output}"
-
-rule trim_adapters_albacore:
-    '''
-    Trims adapters from ends of reads and discards chimeric reads with adapters in the middle.
-    Unnecessary when using Guppy.
-    '''
-    input:
-        rules.gather_albacore_fastqs.output
-    output:
-        proc_working_dir + 'albacore/{barcode}.fastq.gz'
-    threads:
-        config.get('basecaller_threads', 8)
-    conda:
-        resource_filename("mars", "snakemake/envs/processing.yaml")
-    shell:
-        "porechop -i {input} -o {output} --threads {threads} --discard_middle"
-
 rule basecall:
     input:
         lambda wc: expand(
-            proc_working_dir + config.get('basecaller', '') + '/{barcode}.fastq.gz',
+            proc_working_dir + '/guppy/{barcode}.fastq.gz',
             barcode = expand('barcode{bc}', bc=padded_barcodes(samples.loc[samples['sample_label'] == wc.sample])))
     output:
         proc_output_dir + 'unfiltered/{sample}.fastq.gz'
@@ -166,9 +111,9 @@ rule quality_filter:
 
 rule assess_run_nanoplot:
     input:
-        proc_reports_dir + '{basecaller}/sequencing_summary.txt'
+        proc_reports_dir + 'sequencing_summary.txt'
     output:
-        directory(proc_reports_dir + '{basecaller}/nanoplot')
+        directory(proc_reports_dir + 'nanoplot')
     threads:
         config.get('nanoplot_threads', 8)
     conda:
@@ -181,10 +126,9 @@ rule assess_run_nanoplot:
 rule assess_run_nanocomp:
     input:
         expand(
-            proc_working_dir + '{{basecaller}}/{barcode}.fastq.gz',
-            barcode = barcodes)
+            proc_working_dir + '/{barcode}.fastq.gz', barcode = barcodes)
     output:
-        directory(proc_reports_dir + '{basecaller}/nanocomp')
+        directory(proc_reports_dir + 'nanocomp')
     params:
         names = expand('{barcode}', barcode=barcodes),
         prefix_opt = (
@@ -211,9 +155,10 @@ rule process:
         unfiltered=rules.basecall.output
         
 rule process_all:
+    message: "Fastq files are in {}; run reports are in {}".format(proc_output_dir, proc_reports_dir)
     input:
         fastqs = expand(rules.process.input, sample=list(samples.sample_label)),
-        seq_summary = expand(proc_reports_dir + '{basecaller}/sequencing_summary.txt', basecaller=config.get('basecaller')),
-        nanoplot_report = expand(rules.assess_run_nanoplot.output, basecaller=config.get('basecaller')),
-        nanocomp_report = expand(rules.assess_run_nanocomp.output, basecaller=config.get('basecaller')),
+        seq_summary = proc_reports_dir + 'sequencing_summary.txt',
+        nanoplot_report = rules.assess_run_nanoplot.output,
+        nanocomp_report = rules.assess_run_nanocomp.output
 
