@@ -1,11 +1,6 @@
-#=====================================================#
-# MARS/assemble: Bacterial Genome Assembly Workflow   #
-#=====================================================#
-
-from pkg_resources import resource_filename
-from pathlib import Path
-
-from mars import padded_barcodes
+# -*- mode: Snakemake -*-
+#
+# MARS Assembly Workflow
 
 localrules: assemble, assemble_all
 

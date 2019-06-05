@@ -118,12 +118,13 @@ def validate(data, schema):
         schema, resolver=resolver, format_checker = format_checker)
     
     errors = []
-    # Defer to snakemake's validate for handling samplesheet validation
+
     if not isinstance(data, dict):
-        try:
-            _validate(data, schemafile)
-        except MarsValidationError as e:
-            errors.append(e)
+        for row in data.to_dict('records'):
+            for ve in validator.iter_errors(row):
+                key = ve.relative_path.pop() if len(ve.relative_path) > 0 else None
+                errors.append(VenusValidationError(
+                    ve.instance, key, ve.message))
     else:
         for ve in validator.iter_errors(data):
             key = ve.relative_path.pop() if len(ve.relative_path) > 0 else None

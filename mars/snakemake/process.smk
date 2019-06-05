@@ -5,15 +5,13 @@
 # Basecalls, demultiplexes and filters .fast5 files, and produces
 # summary reports at both the run and barcode level.
 
-from mars import padded_barcodes
-
-localrules: process, process_all, gather_guppy_fastqs, gather_albacore_fastqs
+localrules: process, process_all, gather_guppy_fastqs
 
 proc_output_dir = output_dir + 'process/'
 proc_working_dir = working_dir + 'process/'
 proc_reports_dir = reports_dir + 'process/'
 
-barcodes = expand('barcode{bc}', bc=padded_barcodes(samples)) + ['unclassified']
+barcodes = expand('barcode{bc}', bc=mars.padded_barcodes(samples)) + ['unclassified']
 
 rule basecall_guppy:
     output:
@@ -79,7 +77,7 @@ rule basecall:
     input:
         lambda wc: expand(
             proc_working_dir + '/guppy/{barcode}.fastq.gz',
-            barcode = expand('barcode{bc}', bc=padded_barcodes(samples.loc[samples['sample_label'] == wc.sample])))
+            barcode = expand('barcode{bc}', bc=mars.padded_barcodes(samples.loc[samples['sample_label'] == wc.sample])))
     output:
         proc_output_dir + 'unfiltered/{sample}.fastq.gz'
     shell:
