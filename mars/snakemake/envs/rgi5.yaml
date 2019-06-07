@@ -1,0 +1,26 @@
+name: rgi5
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - python>3.6
+  - blast=2.7.1
+  - six>1.7.0
+  - zlib
+  - prodigal=2.6.3
+  - diamond=0.8.36
+  - biopython>1.60
+  - filetype>1.0.0
+  - pytest>3.0.0
+  - mock=2.0.0
+  - pandas>0.15.0
+  - matplotlib>2.1.2
+  - seaborn>0.8.1
+  - pyfaidx>0.5.4.1
+  - pyahocorasick>1.1.7
+  - samtools=1.9
+  - bamtools=2.5.1
+  - bedtools=2.27.1
+  - jellyfish=2.2.10
+  - bowtie2=2.3.4.3
+  - bwa=0.7.17

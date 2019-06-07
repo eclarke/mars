@@ -6,6 +6,7 @@
 # loads the samplesheet and resolves all paths in the config file.
 
 from pkg_resources import resource_filename
+from pathlib import Path
 
 import snakemake.utils
 import mars
@@ -25,6 +26,7 @@ rule list_workflows:
             "\nAvailable workflows:\n"
             " - process_all: basecall, demultiplex and filter reads, and assess run stats\n"
             " - assemble_all: assemble contigs from each sample and assess assembly quality\n"
+            " - annotate_all: annotate contigs from each sample using RGI\n"
             "\nUtility workflows:\n"
             " - force_assembly_reassessment: remove reference genome distances and assembly quality reports to force re-evaluation"
             "Run a workflow with `mars run <configfile> <workflow>`"
@@ -32,3 +34,4 @@ rule list_workflows:
 
 include: resource_filename("mars", "snakemake/process.smk")
 include: resource_filename("mars", "snakemake/assemble.smk")
+include: resource_filename("mars", "snakemake/annotate.smk")

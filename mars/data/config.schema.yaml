@@ -72,6 +72,11 @@ properties:
     type: number
     minimum: 1
     maximum: 32
+  rgi_card_fp:
+    description: "Path to the card.json file from the CARD database"
+    type: string
+    format: file
+    must_exist: True
 required:
   - output_dir
   - samplesheet_fp
@@ -83,3 +88,7 @@ target_requirements:
   assemble:
     - assembler
     - ref_genomes_dir
+  annotate:
+    - assembler
+    - rgi_card_fp
+    

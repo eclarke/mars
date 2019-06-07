@@ -15,7 +15,7 @@ barcodes = expand('barcode{bc}', bc=mars.padded_barcodes(samples)) + ['unclassif
 
 rule basecall_guppy:
     output:
-        summary = proc_reports_dir + 'guppy/sequencing_summary.txt'
+        summary = proc_reports_dir + 'sequencing_summary.txt'
     threads:
         config.get('process_threads', 8)
     params:
@@ -44,7 +44,7 @@ rule demux_guppy:
         out_dir = directory(expand(
             rules.basecall_guppy.params.out_dir + '/{barcode}',
             barcode = barcodes)),
-        summary = proc_reports_dir + 'guppy/barcoding_summary.txt'
+        summary = proc_reports_dir + 'barcoding_summary.txt'
     threads:
         config.get('basecaller_threads', 8)
     params:
@@ -69,15 +69,15 @@ rule gather_guppy_fastqs:
     input:
         rules.basecall_guppy.params.out_dir+'/{barcode}'
     output:
-        proc_working_dir + 'guppy/{barcode}.fastq.gz'
+        proc_working_dir + '{barcode}.fastq.gz'
     shell:
         "cat {input}/*.fastq | gzip > {output}"
 
 rule basecall:
     input:
         lambda wc: expand(
-            proc_working_dir + '/guppy/{barcode}.fastq.gz',
-            barcode = expand('barcode{bc}', bc=mars.padded_barcodes(samples.loc[samples['sample_label'] == wc.sample])))
+            rules.gather_guppy_fastqs.output,
+            barcode = expand('barcode{bc}', bc=mars.padded_barcodes(samples.loc[samples['sample_id'] == wc.sample])))
     output:
         proc_output_dir + 'unfiltered/{sample}.fastq.gz'
     shell:
@@ -124,7 +124,7 @@ rule assess_run_nanoplot:
 rule assess_run_nanocomp:
     input:
         expand(
-            proc_working_dir + '/{barcode}.fastq.gz', barcode = barcodes)
+            proc_working_dir + '{barcode}.fastq.gz', barcode = barcodes)
     output:
         directory(proc_reports_dir + 'nanocomp')
     params:
@@ -155,7 +155,7 @@ rule process:
 rule process_all:
     message: "Fastq files are in {}; run reports are in {}".format(proc_output_dir, proc_reports_dir)
     input:
-        fastqs = expand(rules.process.input, sample=list(samples.sample_label)),
+        fastqs = expand(rules.process.input, sample=list(samples.sample_id)),
         seq_summary = proc_reports_dir + 'sequencing_summary.txt',
         nanoplot_report = rules.assess_run_nanoplot.output,
         nanocomp_report = rules.assess_run_nanocomp.output

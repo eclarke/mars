@@ -182,10 +182,10 @@ rule assemble_all:
         assemblies = expand(
             rules.assemble.input,
             assembler=config.get('assembler', ''),
-            sample=list(samples.sample_label)),
+            sample=list(samples.sample_id)),
         reports = expand(
             rules.assess_assembled_quast.output,
             assembler=config.get('assembler', ''),
-            sample=list(samples.sample_label))
+            sample=list(samples.sample_id))
 
 

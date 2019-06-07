@@ -13,9 +13,6 @@ properties:
   sample_id:
     description: "Canonical sample id from LIMS system"
     type: string
-  description:
-    description: "Free-text description of the sample"
-    type: string
 required:
   - barcode
-  - sample_label
+  - sample_id

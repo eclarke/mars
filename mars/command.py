@@ -125,11 +125,11 @@ def Run(argv):
         mars_error(
             "The following keys must be defined and uncommented in your config file: {}".format(_missing))
         
-    _missing = check_assembler_requirements(config, config_schema)
-    if _missing:
-        mars_error(
-            "Selected assembler ('{}') requires the following keys to be "
-            "defined and uncommented in your config file: {}".format(config['assembler'], _missing))
+    # _missing = check_assembler_requirements(config, config_schema)
+    # if _missing:
+    #     mars_error(
+    #         "Selected assembler ('{}') requires the following keys to be "
+    #         "defined and uncommented in your config file: {}".format(config['assembler'], _missing))
     
     config_errors = validate(config, config_schemafile)
     if config_errors:

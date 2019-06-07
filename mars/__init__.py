@@ -36,6 +36,7 @@ def parse_samples(samplesheet_fp):
     return pd.read_csv(
         samplesheet_fp,
         header=0,
+        index_col=False,
         comment="#",
         sep='\t')
 
@@ -56,14 +57,14 @@ def check_target_requirements(target, config, schema):
         reqs = target_reqs[target]
         return _check_keys(config, reqs)
 
-def check_assembler_requirements(config, schema):
-    if 'assembler' in config:
-        assembler_reqs = schema.get("assembler_requirements", {})
-        missing = set()
-        for asm in config['assembler']:
-            reqs = assembler_reqs.get(asm, [])
-            missing.update(_check_keys(config, reqs))
-        return _check_keys(config, reqs)
+# def check_assembler_requirements(config, schema):
+#     if 'assembler' in config:
+#         assembler_reqs = schema.get("assembler_requirements", {})
+#         missing = set()
+#         for asm in config['assembler']:
+#             reqs = assembler_reqs.get(asm, [])
+#             missing.update(_check_keys(config, reqs))
+#         return _check_keys(config, reqs)
 
 def detect_target_from_dotgraph(dotgraph, schema):
     targets = schema.get("target_requirements", {})
@@ -121,9 +122,10 @@ def validate(data, schema):
 
     if not isinstance(data, dict):
         for row in data.to_dict('records'):
+            print(row)
             for ve in validator.iter_errors(row):
                 key = ve.relative_path.pop() if len(ve.relative_path) > 0 else None
-                errors.append(VenusValidationError(
+                errors.append(MarsValidationError(
                     ve.instance, key, ve.message))
     else:
         for ve in validator.iter_errors(data):
@@ -156,7 +158,7 @@ def create_config(**kwargs):
     out += "# Created with MARS v{}\n\n".format(__version__)
     reqs = schema['required']
     target_reqs = schema['target_requirements']
-    asm_reqs = schema['assembler_requirements']
+    # asm_reqs = schema['assembler_requirements']
     for key, value in schema['properties'].items():
         key_required_by = []
         if key in reqs:
@@ -164,9 +166,9 @@ def create_config(**kwargs):
         for target in target_reqs:
             if key in target_reqs[target]:
                 key_required_by.append(target+' workflow')
-        for asm in asm_reqs:
-            if key in asm_reqs[asm]:
-                key_required_by.append(asm + ' assembler')
+        # for asm in asm_reqs:
+        #     if key in asm_reqs[asm]:
+        #         key_required_by.append(asm + ' assembler')
         req_str = "Required by "+", ".join(key_required_by) if key_required_by else "Optional"
         _desc = value['description']
         _type = value['type']
