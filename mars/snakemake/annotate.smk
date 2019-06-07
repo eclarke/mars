@@ -61,10 +61,10 @@ rule rgi_heatmap:
             assembler='{assembler}',
             sample=list(samples.sample_id))
     output:
-        directory(ann_reports_dir + 'rgi5/{assembler}')
+        directory(ann_reports_dir + 'rgi5/{assembler}/heatmaps')
     params:
         input_dir = ann_output_dir + 'rgi5/{assembler}',
-        output = ann_reports_dir + 'rgi5/{assembler}/heatmap'
+        output = ann_reports_dir + 'rgi5/{assembler}/heatmaps/rgi_heatmap'
     shell:
         (
             "mkdir -p {output} && "
